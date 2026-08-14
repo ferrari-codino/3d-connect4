@@ -1011,6 +1011,128 @@
       }
     }
 
+    /* Setup Step Hero Banner & Summary Card (必ず設定を通す誘導UI) */
+    .setup-hero-banner {
+      background: linear-gradient(135deg, rgba(0, 242, 255, 0.12) 0%, rgba(56, 189, 248, 0.04) 100%);
+      border: 1px solid rgba(0, 242, 255, 0.3);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .setup-badge-step {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #00f2ff;
+      color: #000;
+      font-size: 10px;
+      font-weight: 900;
+      padding: 2px 8px;
+      border-radius: 20px;
+      width: fit-content;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+    }
+
+    .setup-heading {
+      font-size: 14px;
+      font-weight: 800;
+      color: #ffffff;
+      margin: 0;
+      letter-spacing: -0.2px;
+    }
+
+    .setup-subheading {
+      font-size: 11px;
+      color: #94a3b8;
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    /* Live Setup Summary Card */
+    .setup-summary-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-top: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .summary-card-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .summary-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 6px;
+      padding: 5px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 2px;
+    }
+
+    .s-label {
+      font-size: 9px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .s-val {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #f1f5f9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .btn-change-settings-link {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #cbd5e1;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .btn-change-settings-link:hover {
+      background: rgba(0, 242, 255, 0.15);
+      border-color: #00f2ff;
+      color: #00f2ff;
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.25);
+    }
+
     /* Start Battle CTA Button (対戦設定から対戦画面への直感的な導線) */
     .start-battle-cta-group {
       margin-bottom: 12px;
@@ -1550,7 +1672,7 @@
       <div class="brand-icon">4³</div>
       <div class="brand-title-group">
         <h1>立体四目並べ３D <span class="title-white">AIに勝つぞ～</span></h1>
-        <div class="sub-brand">3D SPATIAL STRATEGY · 5歳〜12歳のお子様も楽しめる！</div>
+        <div class="sub-brand">3D SPATIAL STRATEGY</div>
       </div>
     </div>
     <div class="header-right-group">
@@ -1593,12 +1715,11 @@
         ⚙️ 対戦・ゲーム設定
       </div>
 
-      <!-- 対戦画面への導線ボタン (初見でも迷わない大きなCTA) -->
-      <div class="start-battle-cta-group">
-        <button type="button" class="btn-start-battle-cta" onclick="goToBattleScreen()">
-          <span>⚔️ 対戦画面へ進む（ゲーム開始）</span>
-          <span class="cta-arrow">➔</span>
-        </button>
+      <!-- ステップ① 案内バナー (対戦・ゲーム設定を必ず通す設計) -->
+      <div class="setup-hero-banner">
+        <div class="setup-badge-step">ステップ ① 設定</div>
+        <h2 class="setup-heading">🎮 ゲーム設定をチェックしよう！</h2>
+        <p class="setup-subheading">すきな設定を選んでね（※このままスタートしてもOK！）</p>
       </div>
 
       <!-- ニックネーム入力 (5〜10文字・任意) -->
@@ -1716,10 +1837,23 @@
         <!-- 16 column buttons will be rendered dynamically -->
       </div>
 
+      <!-- リアルタイム対戦設定サマリー -->
+      <div class="setup-summary-card">
+        <div class="summary-card-title">📋 現在の対戦設定</div>
+        <div class="summary-grid">
+          <div class="summary-item"><span class="s-label">プレイヤー</span><span class="s-val" id="sumPlayer">人間</span></div>
+          <div class="summary-item"><span class="s-label">手番</span><span class="s-val" id="sumOrder">人間 先手</span></div>
+          <div class="summary-item"><span class="s-label">AIレベル</span><span class="s-val" id="sumLevel">中級</span></div>
+          <div class="summary-item"><span class="s-label">時間制限</span><span class="s-val" id="sumTime">なし</span></div>
+          <div class="summary-item"><span class="s-label">アシスト</span><span class="s-val" id="sumAssist">OFF</span></div>
+          <div class="summary-item"><span class="s-label">テーマ</span><span class="s-val" id="sumTheme">黒 × 白</span></div>
+        </div>
+      </div>
+
       <!-- 設定完了後の対戦画面へ進むボタングループ -->
-      <div style="margin-top: 14px;">
+      <div class="start-battle-cta-group" style="margin-top: 8px;">
         <button type="button" class="btn-start-battle-cta" onclick="goToBattleScreen()">
-          <span>🎮 準備完了！対戦画面へ進む</span>
+          <span>⚔️ この設定で対戦スタート！（対戦画面へ）</span>
           <span class="cta-arrow">➔</span>
         </button>
       </div>
@@ -1773,6 +1907,16 @@
         <div class="canvas-overlay-hint">
           ドラッグで3D視点回転 / ホイールで拡大縮小 / 支柱クリックで着手
         </div>
+      </div>
+
+      <!-- 対戦画面からいつでも設定へ戻れるリンク -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+        <button type="button" class="btn-change-settings-link" onclick="goToSettingsScreen()">
+          ⚙️ ゲーム・難易度設定を変更する
+        </button>
+        <button type="button" class="btn-change-settings-link" onclick="resetGame()">
+          🔄 盤面リセット
+        </button>
       </div>
     </div>
 
@@ -1846,6 +1990,9 @@
       <div class="modal-actions">
         <button type="button" class="modal-btn-primary" onclick="closeResultModalAndRestart()">
           🔄 もう一度挑戦する (盤面リセット)
+        </button>
+        <button type="button" class="modal-btn-secondary" onclick="closeResultModalAndGoSettings()">
+          ⚙️ 設定・難易度を変更して遊ぶ
         </button>
         <button type="button" class="modal-btn-secondary" onclick="openHeroesFromModal()">
           🏆 AIに勝利した勇者たちを見る
@@ -3857,6 +4004,13 @@
       stopParticleFx();
     }
 
+    function closeResultModalAndGoSettings() {
+      const modal = document.getElementById('gameResultModal');
+      if (modal) modal.classList.remove('active');
+      stopParticleFx();
+      goToSettingsScreen();
+    }
+
     // Toggle Assist Mode 1 (勝率予測・評価値)
     function toggleCoaching1(enabled) {
       coachingMode1 = enabled;
@@ -4105,8 +4259,49 @@
       }
     }
 
+    function updateSetupSummary() {
+      const sumPlayer = document.getElementById('sumPlayer');
+      const sumOrder = document.getElementById('sumOrder');
+      const sumLevel = document.getElementById('sumLevel');
+      const sumTime = document.getElementById('sumTime');
+      const sumAssist = document.getElementById('sumAssist');
+      const sumTheme = document.getElementById('sumTheme');
+
+      if (!sumPlayer) return;
+
+      const name = getPlayerDisplayName();
+      sumPlayer.textContent = name;
+      sumOrder.textContent = (humanPlayer === 1) ? '人間 先手' : '人間 後手';
+
+      let diffLabel = '中級';
+      if (difficulty === 'easy') diffLabel = '初級';
+      else if (difficulty === 'medium') diffLabel = '中級';
+      else if (difficulty === 'hard') diffLabel = '上級';
+      else if (difficulty === 'master') diffLabel = 'マスター';
+      else if (difficulty === 'custom') diffLabel = `任意(${customDepth}手)`;
+      sumLevel.textContent = diffLabel;
+
+      sumTime.textContent = (humanTimeLimitSec > 0) ? `${humanTimeLimitSec}秒` : 'なし (無制限)';
+
+      let assistText = 'OFF';
+      if (coachingMode1 && coachingMode2) assistText = '勝率+戦術 ON';
+      else if (coachingMode1) assistText = '勝率予測 ON';
+      else if (coachingMode2) assistText = '戦術リーチ ON';
+      sumAssist.textContent = assistText;
+
+      const themeNameMap = {
+        'black-white': '黒 × 白',
+        'cyan-orange': 'シアン × 橙',
+        'red-yellow': '赤 × 黄',
+        'red-blue': '赤 × 青',
+        'purple-gold': '紫 × 金'
+      };
+      sumTheme.textContent = themeNameMap[currentThemeKey] || '黒 × 白';
+    }
+
     function renderUI() {
       updateStatusDisplay();
+      updateSetupSummary();
 
       // Update Undo Buttons status
       const canUndo = (history.length > 0) && !isAiThinking;
@@ -4286,6 +4481,14 @@
     function goToBattleScreen() {
       playSoundEffect('tap');
       switchMobileTab('stage');
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.body.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
+    }
+
+    function goToSettingsScreen() {
+      playSoundEffect('tap');
+      switchMobileTab('settings');
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
       document.body.scrollTop = 0;
       document.documentElement.scrollTop = 0;
