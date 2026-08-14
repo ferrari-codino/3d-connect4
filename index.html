@@ -1,0 +1,4998 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>立体四目並べ３D　AIに勝つぞ～</title>
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at 50% 20%, #121824 0%, #0a0c10 100%);
+      --panel-bg: rgba(255, 255, 255, 0.03);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --panel-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      --text-main: #e0e0e0;
+      --text-muted: #9ca3af;
+      --accent-color: #00f2ff;
+      --accent-glow: rgba(0, 242, 255, 0.35);
+      
+      /* Theme colors (Default: Cyan x Orange for Elegant Dark) */
+      --p1-base: #00f2ff;
+      --p1-light: #70f8ff;
+      --p1-dark: #0066ff;
+      --p1-name: "シアン (Player 1)";
+      
+      --p2-base: #ff8c00;
+      --p2-light: #ffaa44;
+      --p2-dark: #ff4500;
+      --p2-name: "橙 (Player 2 / AI)";
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    header {
+      background: rgba(10, 12, 16, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, #00f2ff, #0066ff);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 18px;
+      color: #000;
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .brand-title-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #00f2ff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    h1 span.title-white {
+      color: #ffffff;
+    }
+
+    .sub-brand {
+      font-size: 10px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-weight: 600;
+    }
+
+    .status-badge {
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      background: rgba(0, 242, 255, 0.08);
+      color: var(--accent-color);
+      border: 1px solid rgba(0, 242, 255, 0.25);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 12px rgba(0, 242, 255, 0.15);
+    }
+
+    .status-badge.win-human {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border-color: rgba(34, 197, 94, 0.4);
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
+    }
+
+    .status-badge.win-ai {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.4);
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* Main Workspace */
+    .app-container {
+      display: grid;
+      grid-template-columns: 320px 1fr 320px;
+      gap: 20px;
+      padding: 20px;
+      flex: 1;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (max-width: 1200px) {
+      .app-container {
+        grid-template-columns: 300px 1fr;
+      }
+      .history-panel {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 850px) {
+      .app-container {
+        grid-template-columns: 1fr;
+      }
+      .history-panel {
+        grid-column: span 1;
+      }
+    }
+
+    /* Panel Card */
+    .panel-card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--panel-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #00f2ff;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 10px;
+    }
+
+    /* Controls Form */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .segmented-control {
+      display: flex;
+      background: rgba(30, 41, 59, 0.4);
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .segmented-control button {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .segmented-control button.active {
+      background: #00f2ff;
+      color: #000;
+      font-weight: 800;
+      box-shadow: 0 0 12px rgba(0, 242, 255, 0.4);
+    }
+
+    /* 5-Level Difficulty Grid Control */
+    .diff-control-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      background: rgba(30, 41, 59, 0.4);
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .diff-control-grid button {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 2px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .diff-control-grid button.active {
+      background: #00f2ff;
+      color: #000;
+      font-weight: 800;
+      box-shadow: 0 0 12px rgba(0, 242, 255, 0.4);
+    }
+
+    .diff-subtag {
+      font-size: 9px;
+      font-weight: 500;
+      opacity: 0.85;
+    }
+
+    /* Custom Difficulty Panel */
+    .custom-diff-panel {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(0, 242, 255, 0.3);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-top: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 0 15px rgba(0, 242, 255, 0.1);
+    }
+
+    .custom-diff-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .custom-diff-row label {
+      font-size: 11px;
+      color: #e0e0e0;
+      font-weight: 600;
+    }
+
+    .custom-slider-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .custom-slider-group input[type="range"] {
+      width: 90px;
+      accent-color: #00f2ff;
+      cursor: pointer;
+    }
+
+    .custom-val-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: #00f2ff;
+      background: rgba(0, 242, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(0, 242, 255, 0.2);
+      min-width: 42px;
+      text-align: center;
+    }
+
+    select, input[type="text"] {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #e0e0e0;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select:focus {
+      border-color: var(--accent-color);
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+    }
+
+    /* Toggle Switch */
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.12);
+      transition: .3s;
+      border-radius: 22px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #00f2ff;
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(22px);
+      background-color: #000;
+    }
+
+    /* Reset & Action Button Group */
+    .action-btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .btn-reset {
+      background: #00f2ff;
+      color: #000;
+      border: none;
+      padding: 12px 8px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 0 15px rgba(0, 242, 255, 0.35);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .btn-reset:hover {
+      background: #38bdf8;
+      box-shadow: 0 0 25px rgba(0, 242, 255, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn-undo {
+      background: rgba(255, 255, 255, 0.08);
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 12px 8px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .btn-undo:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: #00f2ff;
+      color: #00f2ff;
+      box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn-undo:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* Tactics Alert Banner (アシストモード２) */
+    .tactics-banner {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #fbbf24;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
+      animation: bannerPulse 2.5s infinite;
+    }
+
+    @keyframes bannerPulse {
+      0%, 100% { border-color: rgba(245, 158, 11, 0.4); }
+      50% { border-color: rgba(245, 158, 11, 0.8); }
+    }
+
+    .tactics-badge-triple {
+      background: rgba(239, 68, 68, 0.25);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.45);
+    }
+
+    .tactics-badge-double {
+      background: rgba(245, 158, 11, 0.25);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.45);
+    }
+
+    .tactics-badge-reach {
+      background: rgba(56, 189, 248, 0.25);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.45);
+    }
+
+    .tactics-badge-block {
+      background: rgba(168, 85, 247, 0.25);
+      color: #c084fc;
+      border: 1px solid rgba(168, 85, 247, 0.45);
+    }
+
+    /* 3D Canvas Center Stage */
+    .canvas-container {
+      position: relative;
+      background: radial-gradient(circle at center, rgba(18, 24, 36, 0.6) 0%, rgba(10, 12, 16, 0.95) 100%);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      overflow: hidden;
+      min-height: 560px;
+      height: 60vh;
+      max-height: 680px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--panel-shadow);
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    canvas:active {
+      cursor: grabbing;
+    }
+
+    .canvas-overlay-hint {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 12, 16, 0.85);
+      backdrop-filter: blur(8px);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      color: var(--text-muted);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .canvas-tools {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .tool-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: rgba(10, 12, 16, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .tool-btn:hover {
+      background: rgba(0, 242, 255, 0.2);
+      border-color: var(--accent-color);
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+    }
+
+    /* Column Quick Selector (16 Columns) */
+    .quick-selector {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .col-btn {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 4px;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .col-btn:hover:not(:disabled) {
+      background: rgba(0, 242, 255, 0.15);
+      border-color: var(--accent-color);
+      box-shadow: 0 0 12px rgba(0, 242, 255, 0.25);
+    }
+
+    .col-btn:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+    }
+
+    .col-name {
+      font-weight: 700;
+      font-size: 12px;
+      color: #e0e0e0;
+    }
+
+    .col-height {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .col-score-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-top: 2px;
+    }
+
+    .score-green {
+      background: rgba(34, 197, 94, 0.2);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .score-yellow {
+      background: rgba(156, 163, 175, 0.2);
+      color: #9ca3af;
+      border: 1px solid rgba(156, 163, 175, 0.3);
+    }
+    .score-red {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Move History Log */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .history-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .history-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+    }
+
+    .history-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .turn-num {
+      font-weight: 700;
+      color: #6b7280;
+      font-size: 10px;
+      width: 26px;
+    }
+
+    .player-tag {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    .player-human-tag {
+      background: rgba(0, 242, 255, 0.15);
+      color: #00f2ff;
+      border: 1px solid rgba(0, 242, 255, 0.3);
+    }
+
+    .player-ai-tag {
+      background: rgba(255, 140, 0, 0.15);
+      color: #ff8c00;
+      border: 1px solid rgba(255, 140, 0, 0.3);
+    }
+
+    .move-pos {
+      font-weight: 600;
+      color: #e0e0e0;
+    }
+
+    .eval-badge {
+      font-weight: 700;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .canvas-stage-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Evaluation Gauge Bar (形勢メーター) */
+    .eval-gauge-card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+      padding: 6px 12px;
+      box-shadow: var(--panel-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 0;
+      transition: all 0.25s ease;
+    }
+
+    .eval-gauge-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .eval-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #00f2ff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .eval-status-text {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+
+    .eval-bar-wrapper {
+      height: 14px;
+      background: #1e293b;
+      border-radius: 7px;
+      overflow: hidden;
+      display: flex;
+      border: 1px solid #475569;
+      position: relative;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .eval-bar-human {
+      height: 100%;
+      background: linear-gradient(90deg, #00c6ff, #00f2ff);
+      transition: width 0.3s ease;
+      position: relative;
+      z-index: 1;
+    }
+
+    .eval-bar-ai {
+      height: 100%;
+      background: linear-gradient(90deg, #ff8c00, #f59e0b);
+      transition: width 0.3s ease;
+      position: relative;
+      z-index: 1;
+    }
+
+    .eval-bar-divider {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #ffffff;
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+      z-index: 2;
+      transform: translateX(-50%);
+      transition: left 0.3s ease;
+      pointer-events: none;
+    }
+
+    .eval-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .eval-label-human {
+      color: #00f2ff;
+    }
+
+    .eval-label-ai {
+      color: #ff8c00;
+    }
+
+    /* Teaching Mode Legend */
+    .coaching-banner {
+      background: rgba(0, 242, 255, 0.1);
+      border: 1px solid rgba(0, 242, 255, 0.3);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      color: #00f2ff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  
+    /* Mobile Navigation Tabs (< 768px) */
+    .mobile-tab-bar {
+      display: none;
+      background: rgba(10, 12, 16, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--panel-border);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: 6px 12px;
+      gap: 6px;
+    }
+
+    .mobile-tab-btn {
+      flex: 1;
+      padding: 10px 4px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .mobile-tab-btn.active {
+      background: rgba(0, 242, 255, 0.15);
+      color: #00f2ff;
+      border-color: #00f2ff;
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.25);
+    }
+
+    .canvas-stage-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    canvas {
+      touch-action: none;
+    }
+
+    /* Enhanced Responsive Breakpoints for Mobile, Tablet, PC */
+    @media (max-width: 1100px) {
+      .app-container {
+        grid-template-columns: 320px 1fr;
+        gap: 16px;
+        padding: 16px;
+      }
+      .history-panel {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 6px 10px;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+      }
+      .brand-title-group h1 {
+        font-size: 13.5px;
+      }
+      .sub-brand {
+        display: none;
+      }
+      .header-right-group {
+        width: auto;
+        justify-content: flex-end;
+        gap: 6px;
+      }
+      .header-credit-badge {
+        display: none;
+      }
+      .btn-heroes {
+        padding: 4px 8px;
+        font-size: 10.5px;
+      }
+      .btn-sound {
+        padding: 4px 8px;
+        font-size: 10.5px;
+      }
+      .status-badge {
+        padding: 4px 8px;
+        font-size: 10.5px;
+      }
+
+      .mobile-tab-bar {
+        display: flex;
+        padding: 4px 8px;
+        gap: 4px;
+      }
+
+      .mobile-tab-btn {
+        padding: 7px 4px;
+        font-size: 11.5px;
+      }
+
+      .app-container {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 6px 8px 12px 8px;
+      }
+
+      /* Responsive Tab Visibility on Mobile */
+      .tab-hidden-mobile {
+        display: none !important;
+      }
+
+      .canvas-container {
+        min-height: 280px;
+        height: 50vh;
+        max-height: 480px;
+      }
+
+      .quick-selector {
+        gap: 5px;
+      }
+
+      .col-btn {
+        padding: 8px 2px;
+        min-height: 40px;
+      }
+
+      .col-name {
+        font-size: 12px;
+      }
+      .col-height {
+        font-size: 9.5px;
+      }
+      .match-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 480px) {
+      header {
+        padding: 5px 8px;
+      }
+      .brand-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 15px;
+      }
+      .brand-title-group h1 {
+        font-size: 12.5px;
+      }
+      .canvas-container {
+        height: 48vh;
+        min-height: 260px;
+        max-height: 440px;
+      }
+      .diff-control-grid button {
+        padding: 6px 1px;
+        font-size: 9.5px;
+      }
+    }
+
+    /* Start Battle CTA Button (対戦設定から対戦画面への直感的な導線) */
+    .start-battle-cta-group {
+      margin-bottom: 12px;
+    }
+
+    .btn-start-battle-cta {
+      background: linear-gradient(135deg, #00f2ff 0%, #0284c7 100%);
+      color: #000000;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-weight: 900;
+      font-size: 13.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      box-shadow: 0 0 18px rgba(0, 242, 255, 0.4);
+      transition: all 0.25s ease;
+      letter-spacing: 0.2px;
+      animation: ctaGlowPulse 2.4s infinite ease-in-out;
+    }
+
+    .btn-start-battle-cta:hover {
+      background: linear-gradient(135deg, #38bdf8 0%, #0369a1 100%);
+      box-shadow: 0 0 26px rgba(0, 242, 255, 0.7);
+      transform: translateY(-2px);
+      color: #000000;
+    }
+
+    .btn-start-battle-cta .cta-arrow {
+      font-size: 16px;
+      font-weight: 900;
+      transition: transform 0.2s ease;
+    }
+
+    .btn-start-battle-cta:hover .cta-arrow {
+      transform: translateX(4px);
+    }
+
+    @keyframes ctaGlowPulse {
+      0%, 100% {
+        box-shadow: 0 0 14px rgba(0, 242, 255, 0.35);
+        border-color: rgba(255, 255, 255, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 24px rgba(0, 242, 255, 0.7);
+        border-color: #ffffff;
+      }
+    }
+
+    .doc-download-btn {
+      display: none; /* Hidden by default, shown via JS if on dev URL */
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #00f2ff;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      margin-left: 10px;
+    }
+
+    .doc-download-btn:hover {
+      background: rgba(0, 242, 255, 0.15);
+      border-color: #00f2ff;
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+      color: #ffffff;
+    }
+
+    .header-right-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .header-credit-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: #cbd5e1;
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      padding: 6px 12px;
+      border-radius: 20px;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .btn-sound {
+      background: rgba(15, 23, 42, 0.85);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      padding: 6px 11px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 11.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .btn-sound:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    .btn-sound.muted {
+      color: #94a3b8;
+      border-color: rgba(148, 163, 184, 0.25);
+      background: rgba(0, 0, 0, 0.4);
+      box-shadow: none;
+    }
+
+    .btn-heroes {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: #000;
+      border: 1px solid #fbbf24;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .btn-heroes:hover {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 0 18px rgba(245, 158, 11, 0.6);
+      color: #000;
+    }
+
+    .btn-heroes-panel {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.25) 100%);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      transition: all 0.2s ease;
+    }
+
+    .btn-heroes-panel:hover {
+      background: rgba(245, 158, 11, 0.3);
+      border-color: #fbbf24;
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.3);
+    }
+
+    .nickname-len-badge {
+      font-size: 10px;
+      font-weight: 700;
+      color: #9ca3af;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* Turn Timer Card (人間の考慮時間制限) */
+    .turn-timer-card {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      box-shadow: 0 0 14px rgba(239, 68, 68, 0.15);
+      transition: all 0.2s ease;
+    }
+
+    .turn-timer-card.danger {
+      border-color: #ef4444;
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.5);
+      animation: timerAlertPulse 0.5s infinite alternate;
+    }
+
+    @keyframes timerAlertPulse {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.015); }
+    }
+
+    .turn-timer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+
+    .timer-title {
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .timer-countdown {
+      color: #f87171;
+      font-weight: 800;
+      font-size: 13px;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+
+    .turn-timer-bar-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .turn-timer-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e 0%, #eab308 60%, #ef4444 100%);
+      width: 100%;
+      transition: width 0.08s linear;
+    }
+
+    /* Modal Overlay & Card System */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(4, 7, 12, 0.88);
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal-card {
+      background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0b0f17 100%);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 18px;
+      max-width: 580px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(0, 242, 255, 0.25);
+      position: relative;
+      z-index: 1010;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      animation: modalPopIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes modalPopIn {
+      0% { transform: scale(0.85); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .result-modal-win {
+      border-color: rgba(34, 197, 94, 0.5);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 50px rgba(34, 197, 94, 0.4);
+    }
+
+    .result-modal-lose {
+      border-color: rgba(56, 189, 248, 0.4);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(56, 189, 248, 0.25);
+    }
+
+    .modal-header-hero {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .modal-icon-badge {
+      font-size: 42px;
+      line-height: 1;
+      filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.4));
+      animation: iconFloat 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes iconFloat {
+      0% { transform: translateY(0px); }
+      100% { transform: translateY(-6px); }
+    }
+
+    .modal-result-title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .modal-result-title.win {
+      color: #4ade80;
+      text-shadow: 0 0 20px rgba(74, 222, 128, 0.5);
+    }
+
+    .modal-result-title.lose {
+      color: #93c5fd;
+      text-shadow: 0 0 20px rgba(147, 197, 253, 0.4);
+    }
+
+    .modal-result-title.draw {
+      color: #e2e8f0;
+    }
+
+    /* AI Praise / Encouragement Speech Bubble */
+    .ai-speech-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      position: relative;
+    }
+
+    .ai-avatar {
+      font-size: 28px;
+      flex-shrink: 0;
+      background: rgba(0, 242, 255, 0.15);
+      border: 1px solid rgba(0, 242, 255, 0.3);
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ai-speech-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .ai-speech-author {
+      font-size: 11px;
+      font-weight: 700;
+      color: #00f2ff;
+      letter-spacing: 0.5px;
+    }
+
+    .ai-speech-text {
+      font-size: 13px;
+      line-height: 1.55;
+      color: #f1f5f9;
+      white-space: pre-line;
+      font-weight: 500;
+    }
+
+    /* Match Stats Grid */
+    .match-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .match-stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 2px;
+    }
+
+    .match-stat-label {
+      font-size: 10px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .match-stat-val {
+      font-size: 12px;
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .modal-btn-primary {
+      background: #00f2ff;
+      color: #000;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 0 16px rgba(0, 242, 255, 0.4);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .modal-btn-primary:hover {
+      background: #38bdf8;
+      box-shadow: 0 0 25px rgba(0, 242, 255, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .modal-btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .modal-btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: #00f2ff;
+      color: #00f2ff;
+    }
+
+    /* Heroes Table Modal */
+    .heroes-modal-card {
+      max-width: 780px;
+    }
+
+    .heroes-list-wrapper {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .heroes-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11.5px;
+      text-align: left;
+    }
+
+    .heroes-table th {
+      background: rgba(30, 41, 59, 0.85);
+      color: #94a3b8;
+      font-weight: 700;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .heroes-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: #e2e8f0;
+    }
+
+    .heroes-table tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      font-weight: 800;
+      font-size: 10.5px;
+      color: #000;
+    }
+
+    .rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); box-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+    .rank-2 { background: linear-gradient(135deg, #e2e8f0, #94a3b8); }
+    .rank-3 { background: linear-gradient(135deg, #d97706, #b45309); color: #fff; }
+    .rank-other { background: rgba(255, 255, 255, 0.1); color: #94a3b8; }
+
+    .fx-canvas {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 1005;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">4³</div>
+      <div class="brand-title-group">
+        <h1>立体四目並べ３D <span class="title-white">AIに勝つぞ～</span></h1>
+        <div class="sub-brand">3D SPATIAL STRATEGY · 5歳〜12歳のお子様も楽しめる！</div>
+      </div>
+    </div>
+    <div class="header-right-group">
+      <div class="header-credit-badge">2026.08.14_1.00版、Presented by Portofino</div>
+      <button type="button" class="btn-sound" id="btnSoundToggle" onclick="toggleSound()" title="効果音のON/OFF切り替え">
+        <span id="soundIcon">🔊</span> <span id="soundLabel">効果音 ON</span>
+      </button>
+      <button type="button" class="btn-heroes" id="btnShowHeroesHeader" onclick="openHeroesModal()" title="AIに勝利した勇者たちの一覧を見る">
+        🏆 <span>AIに勝利した勇者たち</span>
+      </button>
+      <a id="docDownloadBtn" href="/developer_docs.txt" download="立体四目並べ3D_開発者ドキュメント.txt" class="doc-download-btn" title="開発者ドキュメント(.txt)をダウンロード">
+        📄 <span>仕様書(.txt)</span>
+      </a>
+      <div class="status-badge" id="statusBadge">
+        <div class="status-dot"></div>
+        <span id="statusText">ゲーム開始</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Tab Navigation (< 768px) -->
+  <div class="mobile-tab-bar" id="mobileTabBar">
+    <button class="mobile-tab-btn active" id="tabBtnSettings" onclick="switchMobileTab('settings')">
+      ⚙️ 対戦設定
+    </button>
+    <button class="mobile-tab-btn" id="tabBtnStage" onclick="switchMobileTab('stage')">
+      🎮 対戦画面
+    </button>
+    <button class="mobile-tab-btn" id="tabBtnHistory" onclick="switchMobileTab('history')">
+      📜 着手履歴
+    </button>
+  </div>
+
+
+  <div class="app-container">
+    
+    <!-- Left Column: Settings Panel -->
+    <div class="panel-card" id="panelSettings">
+      <div class="panel-title">
+        ⚙️ 対戦・ゲーム設定
+      </div>
+
+      <!-- 対戦画面への導線ボタン (初見でも迷わない大きなCTA) -->
+      <div class="start-battle-cta-group">
+        <button type="button" class="btn-start-battle-cta" onclick="goToBattleScreen()">
+          <span>⚔️ 対戦画面へ進む（ゲーム開始）</span>
+          <span class="cta-arrow">➔</span>
+        </button>
+      </div>
+
+      <!-- ニックネーム入力 (5〜10文字・任意) -->
+      <div class="form-group">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <label class="form-label" style="margin-bottom:0;">👤 ニックネーム (任意・5〜10文字)</label>
+          <span id="nicknameCountBadge" class="nickname-len-badge">未設定 (人間)</span>
+        </div>
+        <input type="text" id="nicknameInput" class="nickname-input" maxlength="10" placeholder="例: ゆうしゃタロウ (未入力時は「人間」)" oninput="handleNicknameChange(this.value)" autocomplete="off">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">手番選択</label>
+        <div class="segmented-control">
+          <button type="button" id="btnHumanFirst" class="active" onclick="setOrder(1)">人間 先手</button>
+          <button type="button" id="btnAIFirst" onclick="setOrder(2)">人間 後手</button>
+        </div>
+      </div>
+
+      <!-- 人間の考慮時間制限 -->
+      <div class="form-group">
+        <label class="form-label">⏱️ 人間の考慮時間制限</label>
+        <select id="timeLimitSelect" onchange="changeTimeLimit(this.value)">
+          <option value="0" selected>なし (無制限・じっくり考える)</option>
+          <option value="5">5秒 (超スピード勝負！)</option>
+          <option value="6">6秒</option>
+          <option value="7">7秒</option>
+          <option value="8">8秒</option>
+          <option value="9">9秒</option>
+          <option value="10">10秒 (しっかり考える)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">AIの強さ（思考レベル）</label>
+        <div class="diff-control-grid">
+          <button type="button" id="btnLevelEasy" onclick="setDifficulty('easy')">初級</button>
+          <button type="button" id="btnLevelMedium" class="active" onclick="setDifficulty('medium')">中級</button>
+          <button type="button" id="btnLevelHard" onclick="setDifficulty('hard')">上級</button>
+          <button type="button" id="btnLevelMaster" onclick="setDifficulty('master')">マスター</button>
+          <button type="button" id="btnLevelCustom" onclick="setDifficulty('custom')">任意設定</button>
+        </div>
+
+        <!-- Custom Settings Sub-panel -->
+        <div id="customDiffPanel" class="custom-diff-panel" style="display: none;">
+          <div class="custom-diff-row">
+            <label>先読み手数</label>
+            <div class="custom-slider-group">
+              <input type="range" id="customDepthSlider" min="4" max="12" step="1" value="8" oninput="updateCustomSettings()">
+              <span id="customDepthBadge" class="custom-val-badge">8手</span>
+            </div>
+          </div>
+          <div class="custom-diff-row">
+            <label>思考時間上限</label>
+            <div class="custom-slider-group">
+              <input type="range" id="customTimeSlider" min="0.5" max="5.0" step="0.5" value="2.0" oninput="updateCustomSettings()">
+              <span id="customTimeBadge" class="custom-val-badge">2.0秒</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="toggle-row">
+          <div>
+            <div class="form-label" style="color:#fff; font-size:13.5px; font-weight:600;">アシストモード１ (勝率予測)</div>
+            <div class="form-label">各支柱の勝率予測・評価値を表示</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="coachingToggle1" onchange="toggleCoaching1(this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="toggle-row">
+          <div>
+            <div class="form-label" style="color:#fff; font-size:13.5px; font-weight:600;">アシストモード２ (戦術・リーチ)</div>
+            <div class="form-label">王手 / Wリーチ狙い / 3連リーチ狙い</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="coachingToggle2" onchange="toggleCoaching2(this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">コマのカラーテーマ</label>
+        <select id="themeSelect" onchange="changeTheme(this.value)">
+          <option value="black-white" selected>黒 × 白 (Black × White)</option>
+          <option value="cyan-orange">シアン × 橙 (Cyan × Orange)</option>
+          <option value="red-yellow">赤 × 黄 (Red × Yellow)</option>
+          <option value="red-blue">赤 × 青 (Red × Blue)</option>
+          <option value="purple-gold">紫 × 金 (Purple × Gold)</option>
+        </select>
+      </div>
+
+      <div class="action-btn-group">
+        <button type="button" class="btn-reset" onclick="resetGame()" title="盤面を初期化して再開">🔄 リセット</button>
+        <button type="button" class="btn-undo" id="btnUndoMain" onclick="undoMove()" title="直前の手を取り消して指し直す">↩️ 待った</button>
+      </div>
+
+      <div class="form-group" style="margin-top: 4px;">
+        <button type="button" class="btn-heroes-panel" onclick="openHeroesModal()">
+          🏆 AIに勝利した勇者たち (直近30名)
+        </button>
+      </div>
+
+      <div class="panel-title" style="margin-top: 10px;">
+        🎯 支柱クイック選択
+      </div>
+      <div class="quick-selector" id="quickSelector">
+        <!-- 16 column buttons will be rendered dynamically -->
+      </div>
+
+      <!-- 設定完了後の対戦画面へ進むボタングループ -->
+      <div style="margin-top: 14px;">
+        <button type="button" class="btn-start-battle-cta" onclick="goToBattleScreen()">
+          <span>🎮 準備完了！対戦画面へ進む</span>
+          <span class="cta-arrow">➔</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Center Column: 3D Canvas Stage -->
+    <div class="canvas-stage-wrapper" id="panelStage">
+
+      <!-- 形勢 (勝率予測) ゲージカード -->
+      <div class="eval-gauge-card" id="evalGaugeCard">
+        <div class="eval-gauge-header">
+          <div class="eval-title">📊 局面形勢 (勝率予測)</div>
+          <div class="eval-status-text" id="evalStatusText">50% vs 50% (互角)</div>
+        </div>
+        <div class="eval-bar-wrapper" id="evalBarWrapper">
+          <div class="eval-bar-human" id="evalBarHuman" style="width: 50%;"></div>
+          <div class="eval-bar-divider" id="evalBarDivider" style="left: 50%;"></div>
+          <div class="eval-bar-ai" id="evalBarAi" style="width: 50%;"></div>
+        </div>
+        <div class="eval-labels">
+          <span class="eval-label-human" id="evalLabelHuman">👤 人間 50%</span>
+          <span class="eval-label-ai" id="evalLabelAi">🤖 AI 50%</span>
+        </div>
+      </div>
+
+      <!-- 人間の考慮時間制限カウントダウンバー -->
+      <div class="turn-timer-card" id="turnTimerCard" style="display: none;">
+        <div class="turn-timer-header">
+          <span class="timer-title">⏱️ あなたの考慮時間</span>
+          <span class="timer-countdown" id="timerCountdownText">5.0秒</span>
+        </div>
+        <div class="turn-timer-bar-track">
+          <div class="turn-timer-bar" id="turnTimerBar" style="width: 100%;"></div>
+        </div>
+      </div>
+
+      <!-- アシストモード２：戦術分析アラートバナー -->
+      <div class="tactics-banner" id="tacticsBanner">
+        <span id="tacticsBannerIcon">⚡</span>
+        <span id="tacticsBannerText">戦術アラート: 準備中</span>
+      </div>
+
+      <div class="canvas-container">
+        <canvas id="gameCanvas"></canvas>
+        <div class="canvas-tools">
+          <button class="tool-btn" id="btnUndoTool" onclick="undoMove()" title="待った（1手戻す）">↩</button>
+          <button class="tool-btn" onclick="resetCamera()" title="視点をリセット">↺</button>
+          <button class="tool-btn" onclick="zoomCamera(0.9)" title="拡大">+</button>
+          <button class="tool-btn" onclick="zoomCamera(1.1)" title="縮小">-</button>
+        </div>
+        <div class="canvas-overlay-hint">
+          ドラッグで3D視点回転 / ホイールで拡大縮小 / 支柱クリックで着手
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: History & Stats -->
+    <div class="panel-card history-panel" id="panelHistory">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div class="panel-title" style="margin-bottom: 0;">
+          📜 着手履歴 / 評価ログ
+        </div>
+        <button type="button" class="btn-undo" id="btnUndoHistory" onclick="undoMove()" style="padding: 4px 10px; font-size: 11px; margin: 0;" title="1手戻す">
+          ↩️ 待った
+        </button>
+      </div>
+      <div class="history-list" id="historyList">
+        <!-- History items will be dynamically inserted here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 特効演出用 Fullscreen Canvas (花火・紙吹雪 / 雪) -->
+  <canvas id="fxCanvas" class="fx-canvas" style="display: none;"></canvas>
+
+  <!-- ⑤ ゲーム結果モーダル (大演出 ＋ AIからの絶賛/励ましメッセージ) -->
+  <div class="modal-overlay" id="gameResultModal">
+    <div class="modal-card" id="gameResultCard">
+      <div class="modal-header-hero">
+        <div class="modal-icon-badge" id="modalHeroIcon">🎉</div>
+        <h2 class="modal-result-title win" id="modalResultTitle">【ゆうしゃ】の勝利！</h2>
+      </div>
+
+      <!-- AIからのメッセージ (2行・ランダム絶賛 / 励まし) -->
+      <div class="ai-speech-card">
+        <div class="ai-avatar">🤖</div>
+        <div class="ai-speech-content">
+          <div class="ai-speech-author" id="aiSpeechAuthor">AIからのメッセージ</div>
+          <div class="ai-speech-text" id="aiSpeechText">
+            すごい！立体空間を完全に見切った見事な4連だね！
+            キミの素晴らしいひらめきと集中力に、ぼくは完全に脱帽だよ！
+          </div>
+        </div>
+      </div>
+
+      <!-- 対局データ要約 -->
+      <div class="match-stats-grid">
+        <div class="match-stat-item">
+          <span class="match-stat-label">総手数</span>
+          <span class="match-stat-val" id="statMovesCount">18手</span>
+        </div>
+        <div class="match-stat-item">
+          <span class="match-stat-label">AIレベル</span>
+          <span class="match-stat-val" id="statDifficulty">中級</span>
+        </div>
+        <div class="match-stat-item">
+          <span class="match-stat-label">手番</span>
+          <span class="match-stat-val" id="statTurnOrder">先手</span>
+        </div>
+        <div class="match-stat-item">
+          <span class="match-stat-label">アシスト１(勝率)</span>
+          <span class="match-stat-val" id="statAssist1">OFF</span>
+        </div>
+        <div class="match-stat-item">
+          <span class="match-stat-label">アシスト２(戦術)</span>
+          <span class="match-stat-val" id="statAssist2">OFF</span>
+        </div>
+        <div class="match-stat-item">
+          <span class="match-stat-label">考慮時間</span>
+          <span class="match-stat-val" id="statTimeLimit">制限なし</span>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="modal-btn-primary" onclick="closeResultModalAndRestart()">
+          🔄 もう一度挑戦する (盤面リセット)
+        </button>
+        <button type="button" class="modal-btn-secondary" onclick="openHeroesFromModal()">
+          🏆 AIに勝利した勇者たちを見る
+        </button>
+        <button type="button" class="modal-btn-secondary" onclick="closeResultModalOnly()">
+          👁️ 盤面をじっくり見る (閉じる)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑥ AIに勝利した勇者たち モーダル (直近30名最新順) -->
+  <div class="modal-overlay" id="heroesModal">
+    <div class="modal-card heroes-modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <h2 style="font-size:18px; font-weight:800; color:#fbbf24; display:flex; align-items:center; gap:8px;">
+            🏆 AIに勝利した勇者たち
+          </h2>
+          <p style="font-size:11.5px; color:#94a3b8; margin-top:3px;">
+            見事AIを打ち破った直近30名の勝者栄誉殿堂（最新順）
+          </p>
+        </div>
+        <button type="button" onclick="closeHeroesModal()" style="background:none; border:none; color:#9ca3af; font-size:20px; cursor:pointer; padding:4px;">✕</button>
+      </div>
+
+      <div class="heroes-list-wrapper">
+        <table class="heroes-table">
+          <thead>
+            <tr>
+              <th style="width:44px; text-align:center;">No.</th>
+              <th>勇者のニックネーム</th>
+              <th style="text-align:center;">総手数</th>
+              <th>勝利日時</th>
+              <th>対局設定</th>
+            </tr>
+          </thead>
+          <tbody id="heroesTableBody">
+            <!-- Dynamic rows inserted here -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="modal-btn-primary" onclick="closeHeroesModal()">
+          🎮 ゲーム画面に戻る
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------
+    // 1. Constants & Victory Lines Cache (76 lines) & Zobrist Hash
+    // -------------------------------------------------------------
+    const WINNING_LINES = [];
+    const CELL_LINE_COUNTS = new Uint8Array(64);
+    const ZOBRIST_TABLE = new Uint32Array(64 * 2);
+
+    function initZobrist() {
+      // Seeded random pseudo-number generator for deterministic Zobrist keys
+      let seed = 0x12345678;
+      for (let i = 0; i < 64 * 2; i++) {
+        seed = (seed ^ (seed << 13)) >>> 0;
+        seed = (seed ^ (seed >>> 17)) >>> 0;
+        seed = (seed ^ (seed << 5)) >>> 0;
+        ZOBRIST_TABLE[i] = seed;
+      }
+    }
+    initZobrist();
+
+    function computeZobristHash(b) {
+      let h = 0;
+      for (let i = 0; i < 64; i++) {
+        const val = b[i];
+        if (val === 1) h = (h ^ ZOBRIST_TABLE[i * 2]) >>> 0;
+        else if (val === 2) h = (h ^ ZOBRIST_TABLE[i * 2 + 1]) >>> 0;
+      }
+      return h;
+    }
+
+    // Transposition Table & Search Heuristics
+    const transpositionTable = new Map();
+    const killerMoves = Array.from({ length: 20 }, () => [-1, -1]);
+    const historyTable = new Int32Array(16);
+
+    function clearSearchCaches() {
+      transpositionTable.clear();
+      for (let i = 0; i < 20; i++) {
+        killerMoves[i][0] = -1;
+        killerMoves[i][1] = -1;
+      }
+      historyTable.fill(0);
+    }
+
+    function initWinningLines() {
+      WINNING_LINES.length = 0;
+      CELL_LINE_COUNTS.fill(0);
+      const getIdx = (x, y, z) => x + y * 4 + z * 16;
+
+      // 1. X direction (16 lines)
+      for (let y = 0; y < 4; y++) {
+        for (let z = 0; z < 4; z++) {
+          WINNING_LINES.push([getIdx(0, y, z), getIdx(1, y, z), getIdx(2, y, z), getIdx(3, y, z)]);
+        }
+      }
+      // 2. Y direction (16 lines)
+      for (let x = 0; x < 4; x++) {
+        for (let z = 0; z < 4; z++) {
+          WINNING_LINES.push([getIdx(x, 0, z), getIdx(x, 1, z), getIdx(x, 2, z), getIdx(x, 3, z)]);
+        }
+      }
+      // 3. Z direction (16 lines)
+      for (let x = 0; x < 4; x++) {
+        for (let y = 0; y < 4; y++) {
+          WINNING_LINES.push([getIdx(x, y, 0), getIdx(x, y, 1), getIdx(x, y, 2), getIdx(x, y, 3)]);
+        }
+      }
+      // 4. XY plane diagonals (8 lines)
+      for (let z = 0; z < 4; z++) {
+        WINNING_LINES.push([getIdx(0, 0, z), getIdx(1, 1, z), getIdx(2, 2, z), getIdx(3, 3, z)]);
+        WINNING_LINES.push([getIdx(3, 0, z), getIdx(2, 1, z), getIdx(1, 2, z), getIdx(0, 3, z)]);
+      }
+      // 5. XZ plane diagonals (8 lines)
+      for (let y = 0; y < 4; y++) {
+        WINNING_LINES.push([getIdx(0, y, 0), getIdx(1, y, 1), getIdx(2, y, 2), getIdx(3, y, 3)]);
+        WINNING_LINES.push([getIdx(3, y, 0), getIdx(2, y, 1), getIdx(1, y, 2), getIdx(0, y, 3)]);
+      }
+      // 6. YZ plane diagonals (8 lines)
+      for (let x = 0; x < 4; x++) {
+        WINNING_LINES.push([getIdx(x, 0, 0), getIdx(x, 1, 1), getIdx(x, 2, 2), getIdx(x, 3, 3)]);
+        WINNING_LINES.push([getIdx(x, 3, 0), getIdx(x, 2, 1), getIdx(x, 1, 2), getIdx(0, 3, 3)]);
+      }
+      // 7. Space 3D diagonals (4 lines)
+      WINNING_LINES.push([getIdx(0, 0, 0), getIdx(1, 1, 1), getIdx(2, 2, 2), getIdx(3, 3, 3)]);
+      WINNING_LINES.push([getIdx(3, 0, 0), getIdx(2, 1, 1), getIdx(1, 2, 2), getIdx(0, 3, 3)]);
+      WINNING_LINES.push([getIdx(0, 3, 0), getIdx(1, 2, 1), getIdx(2, 1, 2), getIdx(3, 0, 3)]);
+      WINNING_LINES.push([getIdx(3, 3, 0), getIdx(2, 2, 1), getIdx(1, 1, 2), getIdx(0, 0, 3)]);
+
+      // Precalculate number of winning lines passing through each cell
+      for (let i = 0; i < WINNING_LINES.length; i++) {
+        const line = WINNING_LINES[i];
+        for (let j = 0; j < 4; j++) {
+          CELL_LINE_COUNTS[line[j]]++;
+        }
+      }
+    }
+
+    initWinningLines();
+
+    // Opening Book for 3D Connect Four Center Control
+    const OPENING_CENTER_COLS = [5, 6, 9, 10]; // Center 2x2 columns B2, B3, C2, C3
+
+    function getOpeningBookMove(b, h) {
+      const placed = history.length;
+      if (placed >= 4) return -1; // Only for first 4 moves
+
+      // Check available center columns
+      const openCenters = OPENING_CENTER_COLS.filter(col => h[col] < 4);
+      if (openCenters.length === 0) return -1;
+
+      // Pick center column with highest strategic value or random among top center cols
+      openCenters.sort((a, b) => {
+        const xA = a % 4, yA = Math.floor(a / 4);
+        const xB = b % 4, yB = Math.floor(b / 4);
+        return (Math.abs(xA - 1.5) + Math.abs(yA - 1.5)) - (Math.abs(xB - 1.5) + Math.abs(yB - 1.5));
+      });
+      return openCenters[0];
+    }
+
+    // Column names: A1 to D4
+    const COL_NAMES = [];
+    for (let y = 0; y < 4; y++) {
+      const rowChar = String.fromCharCode(65 + y); // 'A', 'B', 'C', 'D'
+      for (let x = 0; x < 4; x++) {
+        COL_NAMES.push(`${rowChar}${x + 1}`);
+      }
+    }
+
+    // Color themes setup
+    const COLOR_THEMES = {
+      'red-yellow': {
+        p1: { base: '#ef4444', light: '#f87171', dark: '#991b1b', name: '赤' },
+        p2: { base: '#f59e0b', light: '#fbbf24', dark: '#b45309', name: '黄' }
+      },
+      'red-blue': {
+        p1: { base: '#ef4444', light: '#f87171', dark: '#991b1b', name: '赤' },
+        p2: { base: '#3b82f6', light: '#60a5fa', dark: '#1d4ed8', name: '青' }
+      },
+      'black-white': {
+        p1: { base: '#3b3f46', light: '#cbd5e1', dark: '#111827', name: '黒' },
+        p2: { base: '#f1f5f9', light: '#ffffff', dark: '#94a3b8', name: '白' }
+      },
+      'cyan-orange': {
+        p1: { base: '#00f2ff', light: '#70f8ff', dark: '#0066ff', name: 'シアン' },
+        p2: { base: '#ff8c00', light: '#ffaa44', dark: '#ff4500', name: '橙' }
+      },
+      'purple-gold': {
+        p1: { base: '#a855f7', light: '#c084fc', dark: '#7e22ce', name: '紫' },
+        p2: { base: '#eab308', light: '#fde047', dark: '#a16207', name: '金' }
+      }
+    };
+
+    // -------------------------------------------------------------
+    // 2. Global State Variables
+    // -------------------------------------------------------------
+    let board = new Array(64).fill(0); // 0: empty, 1: P1, 2: P2
+    let heights = new Array(16).fill(0); // height level 0..4 for each col 0..15
+    let currentTurn = 1; // 1 or 2
+    let humanPlayer = 1; // 1 (First) or 2 (Second)
+    let aiPlayer = 2;
+    let difficulty = 'medium'; // 'easy', 'medium', 'hard', 'master', 'custom'
+    let customDepth = 8;
+    let customTimeLimitSec = 2.0;
+    let coachingMode1 = false; // アシストモード１ (勝率予測・評価値)
+    let coachingMode2 = false; // アシストモード２ (戦術・リーチ・W/3連リーチ予告)
+    let currentThemeKey = 'black-white';
+    
+    // お子様向け拡張機能 State
+    let playerNickname = ''; // ニックネーム (5〜10文字・任意)
+    let humanTimeLimitSec = 0; // 人間の考慮時間制限 (0=なし, 5〜10秒)
+    let turnTimerInterval = null;
+    let turnTimerStartMs = 0;
+
+    let isGameOver = false;
+    let gameOverReason = ''; // 'win', 'lose', 'timeout_loss', 'draw'
+    let winningLine = null;
+    let history = []; // list of { turn, player, col, score, x, y, z }
+    let coachingScores = new Array(16).fill(null);
+    let colTactics = new Array(16).fill(null);
+    let tacticsSummary = { alerts: [], icon: '⚡', type: 'info' };
+    let isAiThinking = false;
+
+    // AIからの温かいメッセージ集 (5歳〜12歳のお子様向け・各2行)
+    const WIN_QUOTES = [
+      "すごい！立体空間を完全に見切った見事な4連だね！\nキミの素晴らしいひらめきと集中力に、ぼくは完全に脱帽だよ！",
+      "お見事！あんな見えにくい立体対角線でリーチを作るなんて！\n空間認識力が天才的だね！キミの完全勝利だよ！",
+      "大勝利おめでとう！次の一手までしっかり読まれて完敗だよ！\nこの強いAIに勝つなんて、まさに立体四目並べのマスターだね！",
+      "ブラボー！守りも攻めも完璧で、全くスキがなかったよ！\nあきらめずに最後まで考え抜いたキミの集中力、本当にカッコいいよ！",
+      "参りました！息をのむような素晴らしい連続攻撃だったよ！\n未来のチャンピオンはキミで決まりだね！大拍手を送るよ！",
+      "大金星！立体の奥深さを自由自在に操る神の一手だったよ！\nこんなに強いプレイヤーと対戦できて、ぼくも最高に楽しかったよ！",
+      "パーフェクト！AIの罠をすべて見破って勝利を掴み取ったね！\nキミの柔軟な発想力と鋭い洞察力は本物だよ！本当におめでとう！"
+    ];
+
+    const LOSE_QUOTES = [
+      "惜しかったよ、{NAME}！途中までとても鋭い攻めだったね！\n真ん中の立体マスを先に取ると、次はきっとぼくに勝てるよ！",
+      "ナイスファイト！負けても挑戦する心が一番の才能だよ！\n次は相手のダブルリーチを先回りして防ぐ技を試してみてね！",
+      "すごく良い勝負だったよ！あと一歩のところまで追い詰められたよ！\nアシストモードの戦術ヒントを参考に、もう一回リベンジしてみよう！",
+      "最後までよく頑張ったね！考えるたびにどんどん強くなっているよ！\n次はきっと勝てる！ぼくはいつでも次の挑戦を待っているよ！",
+      "失敗は強くなる大チャンス！キミの空間の読み筋、とても光ってたよ！\n深呼吸して、もう一度『AIに勝つぞ～』の合言葉で挑んでみてね！",
+      "ナイスチャレンジ！立体の斜めラインは大人でも見落とす難所だよ！\nあきらめずに何回も挑むキミなら、必ずAIを打ち破れるよ！",
+      "大健闘だったよ！手数を重ねるごとにキミの進化を感じたよ！\nさあ、次はキミが勝つ番だ！もう一回勝負しよう！"
+    ];
+
+    function getPlayerDisplayName() {
+      if (playerNickname && playerNickname.trim().length >= 1) {
+        return playerNickname.trim();
+      }
+      return '人間';
+    }
+
+    // -------------------------------------------------------------
+    // Sound FX Engine (Web Audio API - Synthesizer, 0 network load, 0 lag)
+    // -------------------------------------------------------------
+    let isSoundEnabled = true;
+    try {
+      const savedSound = localStorage.getItem('3d_connect4_sound_v1');
+      if (savedSound !== null) isSoundEnabled = (savedSound === 'true');
+    } catch (e) {}
+
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+        }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function toggleSound() {
+      isSoundEnabled = !isSoundEnabled;
+      try {
+        localStorage.setItem('3d_connect4_sound_v1', String(isSoundEnabled));
+      } catch (e) {}
+      updateSoundUI();
+      if (isSoundEnabled) {
+        playSoundEffect('tap');
+      }
+    }
+
+    function updateSoundUI() {
+      const btn = document.getElementById('btnSoundToggle');
+      const icon = document.getElementById('soundIcon');
+      const label = document.getElementById('soundLabel');
+      if (!btn || !icon || !label) return;
+      if (isSoundEnabled) {
+        btn.classList.remove('muted');
+        icon.textContent = '🔊';
+        label.textContent = '効果音 ON';
+      } else {
+        btn.classList.add('muted');
+        icon.textContent = '🔈';
+        label.textContent = '効果音 OFF';
+      }
+    }
+
+    function playSoundEffect(type) {
+      if (!isSoundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        if (type === 'drop') {
+          // Soft whoosh pitch drop
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.exponentialRampToValueAtTime(240, now + 0.16);
+          gain.gain.setValueAtTime(0.16, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.16);
+        } else if (type === 'land') {
+          // Warm wooden marimba / crystal knock ("ポコンッ！")
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc1.type = 'triangle';
+          osc1.frequency.setValueAtTime(370, now);
+          osc1.frequency.exponentialRampToValueAtTime(280, now + 0.13);
+
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(740, now);
+          osc2.frequency.exponentialRampToValueAtTime(560, now + 0.10);
+
+          gain.gain.setValueAtTime(0.32, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc1.start(now);
+          osc2.start(now);
+          osc1.stop(now + 0.14);
+          osc2.stop(now + 0.14);
+        } else if (type === 'reach') {
+          // Sparkly magic chord ("ピキーン！")
+          [659.25, 830.61, 1046.50].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + i * 0.04);
+            gain.gain.setValueAtTime(0.18, now + i * 0.04);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.22);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + i * 0.04);
+            osc.stop(now + i * 0.04 + 0.22);
+          });
+        } else if (type === 'win') {
+          // Glorious triumph fanfare! (C5 -> E5 -> G5 -> C6 -> E6 melody)
+          const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+          notes.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.10);
+            gain.gain.setValueAtTime(0.24, now + idx * 0.10);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.10 + (idx === notes.length - 1 ? 0.6 : 0.22));
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + idx * 0.10);
+            osc.stop(now + idx * 0.10 + 0.65);
+          });
+        } else if (type === 'lose') {
+          // Gentle comforting descending chime
+          const notes = [523.25, 466.16, 392.00, 329.63];
+          notes.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.13);
+            gain.gain.setValueAtTime(0.16, now + idx * 0.13);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.13 + 0.32);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + idx * 0.13);
+            osc.stop(now + idx * 0.13 + 0.35);
+          });
+        } else if (type === 'tick') {
+          // Subtle woodblock click for last seconds
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1100, now);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.05);
+        } else if (type === 'tap') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, now);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.04);
+        }
+      } catch (e) {}
+    }
+
+    // Camera 3D variables
+    let cameraAngleX = 0.5; // Pitch
+    let cameraAngleY = 0.78; // Yaw
+    let cameraDistance = 380; // Distance Zoom
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
+    let hoveredCol = -1;
+
+    // Drop Animation Queue
+    let fallingBalls = [];
+    let isAnimatingMove = false;
+
+    // -------------------------------------------------------------
+    // 3. AI & Advanced Evaluation Engine (0 ~ 9999 Score Scale)
+    // -------------------------------------------------------------
+    function evaluateBoard(b, h, evalPlayer) {
+      const oppPlayer = evalPlayer === 1 ? 2 : 1;
+      let score = 0;
+
+      let pImmediateThreats = 0;
+      let oImmediateThreats = 0;
+
+      let pTieredThreats = 0;
+      let oTieredThreats = 0;
+
+      // 1. Precise 76 Line Pattern & Reachable Threat Evaluation
+      for (let i = 0; i < 76; i++) {
+        const line = WINNING_LINES[i];
+        let pCount = 0;
+        let oCount = 0;
+        let emptyIdx = -1;
+
+        for (let j = 0; j < 4; j++) {
+          const val = b[line[j]];
+          if (val === evalPlayer) pCount++;
+          else if (val === oppPlayer) oCount++;
+          else emptyIdx = line[j];
+        }
+
+        if (pCount > 0 && oCount > 0) continue; // Blocked line
+
+        if (pCount === 4) return 9999;  // 【自分の4並び（絶対勝利）】
+        if (oCount === 4) return -9999; // 【相手の4並び（絶対敗北）】
+
+        if (pCount === 3) {
+          const col = emptyIdx % 16;
+          const z = Math.floor(emptyIdx / 16);
+          if (h && h[col] === z) {
+            pImmediateThreats++;
+            score += 450;
+          } else if (h && h[col] < z) {
+            // Tiered threat (requires stacking below)
+            pTieredThreats++;
+            score += 150;
+          } else {
+            score += 300;
+          }
+        } else if (pCount === 2) {
+          score += 40;
+        } else if (pCount === 1) {
+          score += 6;
+        }
+
+        if (oCount === 3) {
+          const col = emptyIdx % 16;
+          const z = Math.floor(emptyIdx / 16);
+          if (h && h[col] === z) {
+            oImmediateThreats++;
+            score -= 650;
+          } else if (h && h[col] < z) {
+            oTieredThreats++;
+            score -= 220;
+          } else {
+            score -= 400;
+          }
+        } else if (oCount === 2) {
+          score -= 60;
+        } else if (oCount === 1) {
+          score -= 10;
+        }
+      }
+
+      // 2. Dominant Pattern Knowledge Base: Double Threat & Tiered Fork Detection
+      if (pImmediateThreats >= 2) return 8800;  // 自陣の2箇所同時王手（必勝）
+      if (oImmediateThreats >= 2) return -8800; // 敵陣の2箇所同時王手（必敗）
+
+      if (pImmediateThreats === 1 && pTieredThreats >= 1) score += 800;  // 1手即時王手 + Tieredトラップ
+      if (oImmediateThreats === 1 && oTieredThreats >= 1) score -= 1200; // 相手の1手即時王手 + Tieredトラップ
+
+      // 3. Center Dominance & 3D Interlock Geometry Bonus
+      for (let idx = 0; idx < 64; idx++) {
+        const val = b[idx];
+        if (val === 0) continue;
+
+        const x = idx % 4;
+        const y = Math.floor(idx / 4) % 4;
+        const z = Math.floor(idx / 16);
+
+        // 3D Core Central Cube (1,1,1) to (2,2,2) receives maximum interlock bonus
+        const isCore3D = (x === 1 || x === 2) && (y === 1 || y === 2) && (z === 1 || z === 2);
+        const centerProx = (1.5 - Math.abs(x - 1.5)) + (1.5 - Math.abs(y - 1.5)) + (1.5 - Math.abs(z - 1.5));
+        const totalPositionalValue = CELL_LINE_COUNTS[idx] * 2 + Math.round(centerProx * 3) + (isCore3D ? 12 : 0);
+
+        if (val === evalPlayer) {
+          score += totalPositionalValue;
+        } else {
+          score -= totalPositionalValue;
+        }
+      }
+
+      // Clamp non-terminal heuristic score strictly within -8500 to +8500
+      return Math.max(-8500, Math.min(8500, Math.round(score)));
+    }
+
+    function checkWin(b) {
+      for (let i = 0; i < 76; i++) {
+        const line = WINNING_LINES[i];
+        const val = b[line[0]];
+        if (val !== 0 && val === b[line[1]] && val === b[line[2]] && val === b[line[3]]) {
+          return { winner: val, line: line };
+        }
+      }
+      return null;
+    }
+
+    // Move Ordering with TT Best Move & Killer / History Heuristic
+    function getSortedValidMoves(b, h, playerToMove, ttBestMove = -1, searchDepth = 0) {
+      const validCols = [];
+      for (let c = 0; c < 16; c++) {
+        if (h[c] < 4) validCols.push(c);
+      }
+      if (validCols.length === 0) return [];
+
+      const currentKillers = (searchDepth < 20) ? killerMoves[searchDepth] : [-1, -1];
+
+      const moveScores = validCols.map(col => {
+        let score = 0;
+
+        // 1. TT Best Move gets highest priority
+        if (col === ttBestMove) {
+          return { col, score: 20000 };
+        }
+
+        // 2. Killer moves priority
+        if (col === currentKillers[0]) score += 8000;
+        else if (col === currentKillers[1]) score += 6000;
+
+        // 3. History heuristic priority
+        score += historyTable[col];
+
+        // 4. Quick positional & tactical static evaluation
+        const z = h[col];
+        const idx = col + z * 16;
+
+        b[idx] = playerToMove;
+        h[col]++;
+
+        const win = checkWin(b);
+        if (win && win.winner === playerToMove) {
+          score += 15000;
+        } else {
+          score += evaluateBoard(b, h, playerToMove);
+        }
+
+        b[idx] = 0;
+        h[col]--;
+
+        return { col, score };
+      });
+
+      // Sort moves in descending order
+      moveScores.sort((a, b) => b.score - a.score);
+      return moveScores.map(m => m.col);
+    }
+
+    // Quiescence Search (静的静穏探索)
+    function quiescenceSearch(b, h, alpha, beta, isMaximizing, evalAiPlayer, evalHumanPlayer, depthLimit = 2) {
+      const standPat = evaluateBoard(b, h, evalAiPlayer);
+      if (depthLimit <= 0) return standPat;
+
+      if (isMaximizing) {
+        if (standPat >= beta) return beta;
+        alpha = Math.max(alpha, standPat);
+      } else {
+        if (standPat <= alpha) return alpha;
+        beta = Math.min(beta, standPat);
+      }
+
+      const activePlayer = isMaximizing ? evalAiPlayer : evalHumanPlayer;
+      const oppPlayer = isMaximizing ? evalHumanPlayer : evalAiPlayer;
+
+      const validCols = [];
+      for (let c = 0; c < 16; c++) {
+        if (h[c] < 4) validCols.push(c);
+      }
+
+      // Find tactical threat moves (immediate 4-in-a-row wins or forced blocks)
+      const tacticalCols = [];
+      for (let col of validCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+
+        // Win check for active player
+        b[idx] = activePlayer;
+        const winAct = checkWin(b);
+        b[idx] = 0;
+        if (winAct) {
+          return isMaximizing ? 9999 : -9999;
+        }
+
+        // Win check for opponent (block)
+        b[idx] = oppPlayer;
+        const winOpp = checkWin(b);
+        b[idx] = 0;
+        if (winOpp) {
+          tacticalCols.push(col);
+        }
+      }
+
+      if (tacticalCols.length === 0) {
+        return standPat;
+      }
+
+      for (let col of tacticalCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+        b[idx] = activePlayer;
+        h[col]++;
+
+        const score = quiescenceSearch(b, h, alpha, beta, !isMaximizing, evalAiPlayer, evalHumanPlayer, depthLimit - 1);
+
+        b[idx] = 0;
+        h[col]--;
+
+        if (isMaximizing) {
+          if (score >= beta) return beta;
+          alpha = Math.max(alpha, score);
+        } else {
+          if (score <= alpha) return alpha;
+          beta = Math.min(beta, score);
+        }
+      }
+
+      return isMaximizing ? alpha : beta;
+    }
+
+    function minimax(b, h, depth, alpha, beta, isMaximizing, evalAiPlayer, evalHumanPlayer, deadlineMs = null, currentPly = 0) {
+      if (deadlineMs && Date.now() > deadlineMs) {
+        return { score: evaluateBoard(b, h, evalAiPlayer), move: -1, aborted: true };
+      }
+
+      const winState = checkWin(b);
+      if (winState) {
+        if (winState.winner === evalAiPlayer) return { score: 9999 - currentPly, move: -1 };
+        if (winState.winner === evalHumanPlayer) return { score: -9999 + currentPly, move: -1 };
+      }
+
+      if (depth <= 0) {
+        // Apply Quiescence Search for quiet tactical stability
+        const qScore = quiescenceSearch(b, h, alpha, beta, isMaximizing, evalAiPlayer, evalHumanPlayer, 2);
+        return { score: qScore, move: -1 };
+      }
+
+      // Transposition Table Lookup
+      const boardHash = computeZobristHash(b);
+      const ttEntry = transpositionTable.get(boardHash);
+      let ttBestMove = -1;
+
+      if (ttEntry) {
+        ttBestMove = ttEntry.move;
+        if (ttEntry.depth >= depth) {
+          if (ttEntry.flag === 'EXACT') {
+            return { score: ttEntry.score, move: ttEntry.move };
+          } else if (ttEntry.flag === 'LOWER' && ttEntry.score >= beta) {
+            return { score: ttEntry.score, move: ttEntry.move };
+          } else if (ttEntry.flag === 'UPPER' && ttEntry.score <= alpha) {
+            return { score: ttEntry.score, move: ttEntry.move };
+          }
+        }
+      }
+
+      const activePlayer = isMaximizing ? evalAiPlayer : evalHumanPlayer;
+      const oppPlayer = isMaximizing ? evalHumanPlayer : evalAiPlayer;
+
+      const validCols = [];
+      for (let c = 0; c < 16; c++) {
+        if (h[c] < 4) validCols.push(c);
+      }
+      if (validCols.length === 0) {
+        return { score: evaluateBoard(b, h, evalAiPlayer), move: -1 };
+      }
+
+      // 1. Immediate Win Check for active player
+      for (let col of validCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+        b[idx] = activePlayer;
+        const isWin = checkWin(b);
+        b[idx] = 0;
+        if (isWin) {
+          return { score: isMaximizing ? (9999 - currentPly) : (-9999 + currentPly), move: col };
+        }
+      }
+
+      // 2. Forced Block Check for opponent threats
+      const forcedBlocks = [];
+      for (let col of validCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+        b[idx] = oppPlayer;
+        const isOppWin = checkWin(b);
+        b[idx] = 0;
+        if (isOppWin) {
+          forcedBlocks.push(col);
+        }
+      }
+
+      let moves = [];
+      let isForced = false;
+      if (forcedBlocks.length > 0) {
+        if (forcedBlocks.length >= 2) {
+          // Opponent has double threat -> Unblockable
+          return { score: isMaximizing ? (-9999 + currentPly) : (9999 - currentPly), move: forcedBlocks[0] };
+        }
+        moves = forcedBlocks;
+        isForced = true;
+      } else {
+        moves = getSortedValidMoves(b, h, activePlayer, ttBestMove, currentPly);
+      }
+
+      let bestMove = moves[0];
+      const depthDec = isForced ? 0.5 : 1.0;
+      const origAlpha = alpha;
+
+      if (isMaximizing) {
+        let maxEval = -Infinity;
+        for (let i = 0; i < moves.length; i++) {
+          if (deadlineMs && Date.now() > deadlineMs && i > 0) {
+            return { score: maxEval, move: bestMove, aborted: true };
+          }
+          const col = moves[i];
+          const z = h[col];
+          const idx = col + z * 16;
+
+          b[idx] = evalAiPlayer;
+          h[col]++;
+
+          const result = minimax(b, h, depth - depthDec, alpha, beta, false, evalAiPlayer, evalHumanPlayer, deadlineMs, currentPly + 1);
+
+          b[idx] = 0;
+          h[col]--;
+
+          if (result.aborted && i > 0) {
+            return { score: maxEval, move: bestMove, aborted: true };
+          }
+
+          if (result.score > maxEval) {
+            maxEval = result.score;
+            bestMove = col;
+          }
+          alpha = Math.max(alpha, result.score);
+          if (beta <= alpha) {
+            // Update Killer Moves & History Heuristic on Cutoff
+            if (currentPly < 20 && col !== killerMoves[currentPly][0]) {
+              killerMoves[currentPly][1] = killerMoves[currentPly][0];
+              killerMoves[currentPly][0] = col;
+            }
+            historyTable[col] += depth * depth;
+            break; // Alpha-Beta Cutoff
+          }
+        }
+
+        // Store into Transposition Table
+        let flag = 'EXACT';
+        if (maxEval <= origAlpha) flag = 'UPPER';
+        else if (maxEval >= beta) flag = 'LOWER';
+        transpositionTable.set(boardHash, { depth, score: maxEval, flag, move: bestMove });
+
+        return { score: maxEval, move: bestMove };
+      } else {
+        let minEval = Infinity;
+        for (let i = 0; i < moves.length; i++) {
+          if (deadlineMs && Date.now() > deadlineMs && i > 0) {
+            return { score: minEval, move: bestMove, aborted: true };
+          }
+          const col = moves[i];
+          const z = h[col];
+          const idx = col + z * 16;
+
+          b[idx] = evalHumanPlayer;
+          h[col]++;
+
+          const result = minimax(b, h, depth - depthDec, alpha, beta, true, evalAiPlayer, evalHumanPlayer, deadlineMs, currentPly + 1);
+
+          b[idx] = 0;
+          h[col]--;
+
+          if (result.aborted && i > 0) {
+            return { score: minEval, move: bestMove, aborted: true };
+          }
+
+          if (result.score < minEval) {
+            minEval = result.score;
+            bestMove = col;
+          }
+          beta = Math.min(beta, result.score);
+          if (beta <= alpha) {
+            // Update Killer Moves & History Heuristic on Cutoff
+            if (currentPly < 20 && col !== killerMoves[currentPly][0]) {
+              killerMoves[currentPly][1] = killerMoves[currentPly][0];
+              killerMoves[currentPly][0] = col;
+            }
+            historyTable[col] += depth * depth;
+            break; // Alpha-Beta Cutoff
+          }
+        }
+
+        // Store into Transposition Table
+        let flag = 'EXACT';
+        if (minEval <= origAlpha) flag = 'UPPER';
+        else if (minEval >= beta) flag = 'LOWER';
+        transpositionTable.set(boardHash, { depth, score: minEval, flag, move: bestMove });
+
+        return { score: minEval, move: bestMove };
+      }
+    }
+
+    // Iterative Deepening Minimax Search Engine
+    function getBestMoveIterative(b, h, targetMaxDepth, maxTimeMs, evalAiPlayer, evalHumanPlayer) {
+      clearSearchCaches(); // Reset TT, Killer Moves, and History Table per search
+
+      // 1. Opening Book Check
+      const bookMove = getOpeningBookMove(b, h);
+      if (bookMove !== -1) {
+        return { move: bookMove, score: 500 };
+      }
+
+      const startTime = Date.now();
+      const deadlineMs = startTime + maxTimeMs;
+
+      const validCols = [];
+      for (let c = 0; c < 16; c++) {
+        if (h[c] < 4) validCols.push(c);
+      }
+      if (validCols.length === 0) return { move: -1, score: 0 };
+      if (validCols.length === 1) return { move: validCols[0], score: 0 };
+
+      // 2. Immediate Win Check for active player
+      for (let col of validCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+        b[idx] = evalAiPlayer;
+        const isWin = checkWin(b);
+        b[idx] = 0;
+        if (isWin) return { move: col, score: 9999 };
+      }
+
+      // 3. Prevent Opponent Win (Forced Block Check)
+      const forcedBlocks = [];
+      for (let col of validCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+        b[idx] = evalHumanPlayer;
+        const isWin = checkWin(b);
+        b[idx] = 0;
+        if (isWin) forcedBlocks.push(col);
+      }
+
+      if (forcedBlocks.length >= 2) {
+        return { move: forcedBlocks[0], score: -9999 };
+      }
+
+      // 4. Iterative Deepening Search
+      let bestMove = (forcedBlocks.length === 1) ? forcedBlocks[0] : validCols[0];
+      let bestScore = -Infinity;
+
+      for (let currentDepth = 2; currentDepth <= targetMaxDepth; currentDepth++) {
+        if (Date.now() >= deadlineMs && currentDepth > 3) break;
+
+        const result = minimax(b, h, currentDepth, -Infinity, Infinity, true, evalAiPlayer, evalHumanPlayer, deadlineMs, 0);
+
+        if (result.aborted && bestMove !== -1) {
+          break;
+        }
+
+        bestMove = result.move;
+        bestScore = result.score;
+
+        if (Math.abs(bestScore) >= 9000) break;
+      }
+
+      return { move: bestMove, score: bestScore };
+    }
+
+    // AI Move trigger
+    function makeAiMove() {
+      if (isGameOver || isAiThinking) return;
+      isAiThinking = true;
+      updateStatusDisplay();
+
+      setTimeout(() => {
+        const validMoves = [];
+        for (let c = 0; c < 16; c++) {
+          if (heights[c] < 4) validMoves.push(c);
+        }
+
+        if (validMoves.length === 0) {
+          isAiThinking = false;
+          return;
+        }
+
+        let chosenMove = -1;
+        let moveScore = null;
+
+        let targetDepth = 5;
+        let timeLimitMs = 1500;
+
+        if (difficulty === 'easy') {
+          targetDepth = 3;
+          timeLimitMs = 1000;
+        } else if (difficulty === 'medium') {
+          targetDepth = 5;
+          timeLimitMs = 1500;
+        } else if (difficulty === 'hard') {
+          targetDepth = 7;
+          timeLimitMs = 2000;
+        } else if (difficulty === 'master') {
+          const filled = heights.reduce((a, b) => a + b, 0);
+          if (filled < 20) targetDepth = 8;
+          else if (filled < 36) targetDepth = 10;
+          else targetDepth = 12;
+          timeLimitMs = 2500;
+        } else if (difficulty === 'custom') {
+          targetDepth = customDepth;
+          timeLimitMs = Math.round(customTimeLimitSec * 1000);
+        }
+
+        if (difficulty === 'easy') {
+          const candidateScores = validMoves.map(col => {
+            const z = heights[col];
+            const idx = col + z * 16;
+            board[idx] = aiPlayer;
+            heights[col]++;
+            const score = evaluateBoard(board, heights, aiPlayer) + (Math.random() * 200 - 100);
+            board[idx] = 0;
+            heights[col]--;
+            return { col, score };
+          });
+          candidateScores.sort((a, b) => b.score - a.score);
+          chosenMove = candidateScores[0].col;
+        } else {
+          const searchRes = getBestMoveIterative(board, heights, targetDepth, timeLimitMs, aiPlayer, humanPlayer);
+          chosenMove = searchRes.move;
+          moveScore = searchRes.score;
+        }
+
+        if (chosenMove === -1 || heights[chosenMove] >= 4) {
+          chosenMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+        }
+
+        isAiThinking = false;
+
+        if (chosenMove !== -1) {
+          if (moveScore === null) {
+            moveScore = evaluateBoard(board, heights, aiPlayer);
+          }
+          executeMove(chosenMove, moveScore);
+        }
+      }, 80);
+    }
+
+    // Tactical Analysis Engine for Assist Mode 2 (王手 / Wリーチ狙い / 3連リーチ狙い)
+    function computeTacticsAssist() {
+      colTactics.fill(null);
+      tacticsSummary = { alerts: [], icon: '⚡', type: 'info' };
+
+      if (isGameOver) return;
+
+      const validCols = [];
+      for (let c = 0; c < 16; c++) {
+        if (heights[c] < 4) validCols.push(c);
+      }
+      if (validCols.length === 0) return;
+
+      // 1. Check AI immediate winning moves (王手 / リーチをかけられている)
+      const aiImmediateWins = [];
+      for (let col of validCols) {
+        const z = heights[col];
+        const idx = col + z * 16;
+        board[idx] = aiPlayer;
+        if (checkWin(board)) aiImmediateWins.push(col);
+        board[idx] = 0;
+      }
+
+      // 2. Check Human immediate winning moves (自分が王手 / 4連即勝利)
+      const humanImmediateWins = [];
+      for (let col of validCols) {
+        const z = heights[col];
+        const idx = col + z * 16;
+        board[idx] = humanPlayer;
+        if (checkWin(board)) humanImmediateWins.push(col);
+        board[idx] = 0;
+      }
+
+      // 3. Find AI potential double/triple reach moves on their next turn (if human doesn't block)
+      const aiForkCols = [];
+      for (let col of validCols) {
+        const z = heights[col];
+        const idx = col + z * 16;
+        board[idx] = aiPlayer;
+        heights[col]++;
+
+        let nextAiWins = 0;
+        for (let c = 0; c < 16; c++) {
+          if (heights[c] < 4) {
+            const tz = heights[c];
+            const tidx = c + tz * 16;
+            board[tidx] = aiPlayer;
+            if (checkWin(board)) nextAiWins++;
+            board[tidx] = 0;
+          }
+        }
+        board[idx] = 0;
+        heights[col]--;
+
+        if (nextAiWins >= 2) {
+          aiForkCols.push({ col, threats: nextAiWins });
+        }
+      }
+
+      // 4. Analyze each column for Human player
+      for (let col of validCols) {
+        const z = heights[col];
+        const idx = col + z * 16;
+
+        // A. Immediate Win for human
+        if (humanImmediateWins.includes(col)) {
+          colTactics[col] = {
+            type: 'win',
+            label: '👑 4連完成(即勝利)',
+            shortLabel: '👑勝利手',
+            badgeClass: 'tactics-badge-triple',
+            priority: 100,
+            bg: 'rgba(16, 185, 129, 0.95)',
+            text: '#ffffff'
+          };
+          continue;
+        }
+
+        // B. Blocking AI immediate win (王手防御)
+        if (aiImmediateWins.includes(col)) {
+          colTactics[col] = {
+            type: 'block_win',
+            label: '⚠️ 王手防御(リーチ阻止)',
+            shortLabel: '⚠️王手阻止',
+            badgeClass: 'tactics-badge-triple',
+            priority: 95,
+            bg: 'rgba(239, 68, 68, 0.95)',
+            text: '#ffffff'
+          };
+          continue;
+        }
+
+        // C. Check what happens if Human plays this column
+        board[idx] = humanPlayer;
+        heights[col]++;
+
+        let immediateThreatCount = 0;
+        for (let c = 0; c < 16; c++) {
+          if (heights[c] < 4) {
+            const tz = heights[c];
+            const tidx = c + tz * 16;
+            board[tidx] = humanPlayer;
+            if (checkWin(board)) immediateThreatCount++;
+            board[tidx] = 0;
+          }
+        }
+
+        // Suicide Check (Does playing here give AI an immediate win on top?)
+        let isSuicide = false;
+        if (heights[col] < 4) {
+          const topZ = heights[col];
+          const topIdx = col + topZ * 16;
+          board[topIdx] = aiPlayer;
+          if (checkWin(board)) isSuicide = true;
+          board[topIdx] = 0;
+        }
+
+        board[idx] = 0;
+        heights[col]--;
+
+        if (isSuicide) {
+          colTactics[col] = {
+            type: 'suicide',
+            label: '☠️ 危険手(相手王手献上)',
+            shortLabel: '☠️危険手',
+            badgeClass: 'tactics-badge-block',
+            priority: 10,
+            bg: 'rgba(220, 38, 38, 0.85)',
+            text: '#ffffff'
+          };
+        } else if (immediateThreatCount >= 3) {
+          colTactics[col] = {
+            type: 'triple_reach',
+            label: '🔥 トリプルリーチ狙い (3方向王手)',
+            shortLabel: '🔥3連リーチ狙い',
+            badgeClass: 'tactics-badge-triple',
+            priority: 90,
+            bg: 'rgba(239, 68, 68, 0.92)',
+            text: '#ffffff'
+          };
+        } else if (immediateThreatCount === 2) {
+          colTactics[col] = {
+            type: 'double_reach',
+            label: '⚡ ダブルリーチ狙い (両建て王手)',
+            shortLabel: '⚡Wリーチ狙い',
+            badgeClass: 'tactics-badge-double',
+            priority: 85,
+            bg: 'rgba(245, 158, 11, 0.92)',
+            text: '#ffffff'
+          };
+        } else if (immediateThreatCount === 1) {
+          colTactics[col] = {
+            type: 'single_reach',
+            label: '👑 リーチ狙い (王手作成)',
+            shortLabel: '👑王手作成',
+            badgeClass: 'tactics-badge-reach',
+            priority: 60,
+            bg: 'rgba(56, 189, 248, 0.9)',
+            text: '#000000'
+          };
+        } else {
+          // Check if this move blocks AI's upcoming fork
+          const aiFork = aiForkCols.find(f => f.col === col);
+          if (aiFork) {
+            colTactics[col] = {
+              type: 'block_fork',
+              label: '🛡️ 相手Wリーチ阻止 (防ぎ所)',
+              shortLabel: '🛡️Wリーチ阻止',
+              badgeClass: 'tactics-badge-block',
+              priority: 70,
+              bg: 'rgba(168, 85, 247, 0.9)',
+              text: '#ffffff'
+            };
+          }
+        }
+      }
+
+      // Generate tactical summary alerts for the banner
+      if (aiImmediateWins.length >= 2) {
+        tacticsSummary = {
+          alerts: [`⚠️ 相手のダブルリーチ成立中！ (${aiImmediateWins.map(c => COL_NAMES[c]).join(', ')}) 防ぎきれません`],
+          icon: '🚨',
+          type: 'danger'
+        };
+      } else if (aiImmediateWins.length === 1) {
+        tacticsSummary = {
+          alerts: [`⚠️ 相手の王手（リーチ）が発生中！ [${COL_NAMES[aiImmediateWins[0]]}] を防御してください`],
+          icon: '🚨',
+          type: 'danger'
+        };
+      } else if (humanImmediateWins.length > 0) {
+        tacticsSummary = {
+          alerts: [`👑 勝利確定！ [${COL_NAMES[humanImmediateWins[0]]}] に着手すると4連完成です`],
+          icon: '🎉',
+          type: 'win'
+        };
+      } else {
+        const tripleCols = validCols.filter(c => colTactics[c] && colTactics[c].type === 'triple_reach');
+        const doubleCols = validCols.filter(c => colTactics[c] && colTactics[c].type === 'double_reach');
+        const blockForkCols = validCols.filter(c => colTactics[c] && colTactics[c].type === 'block_fork');
+
+        if (tripleCols.length > 0) {
+          tacticsSummary = {
+            alerts: [`🔥 必勝手: [${tripleCols.map(c => COL_NAMES[c]).join(', ')}] でトリプルリーチ（3方向同時王手）を狙えます！`],
+            icon: '🔥',
+            type: 'triple'
+          };
+        } else if (doubleCols.length > 0) {
+          tacticsSummary = {
+            alerts: [`⚡ 好手: [${doubleCols.map(c => COL_NAMES[c]).join(', ')}] でダブルリーチ（両建て王手）を狙えます！`],
+            icon: '⚡',
+            type: 'double'
+          };
+        } else if (blockForkCols.length > 0) {
+          tacticsSummary = {
+            alerts: [`🛡️ 警戒: [${blockForkCols.map(c => COL_NAMES[c]).join(', ')}] は相手のダブルリーチ狙いの急所です`],
+            icon: '🛡️',
+            type: 'block'
+          };
+        } else {
+          tacticsSummary = {
+            alerts: [`盤面上に即時の王手・ダブルリーチ急所はありません（中央・立体拠点を強化しましょう）`],
+            icon: '💡',
+            type: 'neutral'
+          };
+        }
+      }
+    }
+
+    // Unified Fast Coaching & Game Situation (形勢勝率) Engine
+    function updateCoachingAndEvalGauge() {
+      coachingScores.fill(null);
+
+      const statusText = document.getElementById('evalStatusText');
+      const barHuman = document.getElementById('evalBarHuman');
+      const barAi = document.getElementById('evalBarAi');
+      const barDivider = document.getElementById('evalBarDivider');
+      const barWrapper = document.getElementById('evalBarWrapper');
+      const evalGaugeCard = document.getElementById('evalGaugeCard');
+      const labelHuman = document.getElementById('evalLabelHuman');
+      const labelAi = document.getElementById('evalLabelAi');
+
+      if (!statusText || !barHuman || !barAi) return;
+
+      const humanTheme = (humanPlayer === 1) ? COLOR_THEMES[currentThemeKey].p1 : COLOR_THEMES[currentThemeKey].p2;
+      const aiTheme = (aiPlayer === 1) ? COLOR_THEMES[currentThemeKey].p1 : COLOR_THEMES[currentThemeKey].p2;
+
+      // Theme-specific styling for high contrast
+      if (currentThemeKey === 'black-white') {
+        if (evalGaugeCard) {
+          evalGaugeCard.style.background = 'rgba(15, 23, 42, 0.95)';
+          evalGaugeCard.style.border = '1px solid rgba(148, 163, 184, 0.35)';
+        }
+        if (barWrapper) {
+          barWrapper.style.background = '#1e293b';
+          barWrapper.style.border = '1.5px solid #64748b';
+          barWrapper.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.7), 0 0 10px rgba(255, 255, 255, 0.08)';
+        }
+      } else {
+        if (evalGaugeCard) {
+          evalGaugeCard.style.background = 'var(--panel-bg)';
+          evalGaugeCard.style.border = '1px solid var(--panel-border)';
+        }
+        if (barWrapper) {
+          barWrapper.style.background = 'rgba(255, 255, 255, 0.06)';
+          barWrapper.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+          barWrapper.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.5)';
+        }
+      }
+
+      // Bar Colors with High Contrast Gradients
+      if (humanTheme.name === '黒') {
+        barHuman.style.background = 'linear-gradient(180deg, #475569 0%, #1e293b 50%, #0f172a 100%)';
+        barHuman.style.borderRight = '1px solid #94a3b8';
+        barHuman.style.boxShadow = 'inset 0 1px 2px rgba(255,255,255,0.3)';
+      } else if (humanTheme.name === '白') {
+        barHuman.style.background = 'linear-gradient(180deg, #ffffff 0%, #f1f5f9 60%, #cbd5e1 100%)';
+        barHuman.style.borderRight = 'none';
+        barHuman.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.6)';
+      } else {
+        barHuman.style.background = `linear-gradient(90deg, ${humanTheme.dark || humanTheme.base}, ${humanTheme.base})`;
+        barHuman.style.borderRight = 'none';
+        barHuman.style.boxShadow = `0 0 10px ${humanTheme.base}80`;
+      }
+
+      if (aiTheme.name === '黒') {
+        barAi.style.background = 'linear-gradient(180deg, #475569 0%, #1e293b 50%, #0f172a 100%)';
+        barAi.style.borderLeft = '1px solid #94a3b8';
+        barAi.style.boxShadow = 'inset 0 1px 2px rgba(255,255,255,0.3)';
+      } else if (aiTheme.name === '白') {
+        barAi.style.background = 'linear-gradient(180deg, #ffffff 0%, #f1f5f9 60%, #cbd5e1 100%)';
+        barAi.style.borderLeft = 'none';
+        barAi.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.6)';
+      } else {
+        barAi.style.background = `linear-gradient(90deg, ${aiTheme.base}, ${aiTheme.light || aiTheme.base})`;
+        barAi.style.borderLeft = 'none';
+        barAi.style.boxShadow = `0 0 10px ${aiTheme.base}80`;
+      }
+
+      const humanTextColor = (humanTheme.name === '黒') ? '#cbd5e1' : (humanTheme.light || humanTheme.base);
+      const aiTextColor = (aiTheme.name === '白') ? '#ffffff' : (aiTheme.light || aiTheme.base);
+
+      // Run Tactical Assist Analyzer
+      computeTacticsAssist();
+
+      const name = getPlayerDisplayName();
+
+      if (isGameOver) {
+        if (winningLine) {
+          const winner = board[winningLine[0]];
+          if (winner === humanPlayer) {
+            barHuman.style.width = '100%';
+            barAi.style.width = '0%';
+            if (barDivider) barDivider.style.left = '100%';
+            labelHuman.textContent = `👤 ${name} (${humanTheme.name}) 100%`;
+            labelAi.textContent = `🤖 AI (${aiTheme.name}) 0%`;
+            statusText.textContent = `100% vs 0% (🎉 ${name}の勝利！)`;
+            statusText.style.color = humanTextColor;
+          } else {
+            barHuman.style.width = '0%';
+            barAi.style.width = '100%';
+            if (barDivider) barDivider.style.left = '0%';
+            labelHuman.textContent = `👤 ${name} (${humanTheme.name}) 0%`;
+            labelAi.textContent = `🤖 AI (${aiTheme.name}) 100%`;
+            statusText.textContent = '0% vs 100% (🤖 AIの勝利！)';
+            statusText.style.color = aiTextColor;
+          }
+        } else if (gameOverReason === 'timeout_loss') {
+          barHuman.style.width = '0%';
+          barAi.style.width = '100%';
+          if (barDivider) barDivider.style.left = '0%';
+          labelHuman.textContent = `👤 ${name} (${humanTheme.name}) 0%`;
+          labelAi.textContent = `🤖 AI (${aiTheme.name}) 100%`;
+          statusText.textContent = `0% vs 100% (⏱️ ${name}の時間切れ)`;
+          statusText.style.color = aiTextColor;
+        } else {
+          barHuman.style.width = '50%';
+          barAi.style.width = '50%';
+          if (barDivider) barDivider.style.left = '50%';
+          labelHuman.textContent = `👤 ${name} (${humanTheme.name}) 50%`;
+          labelAi.textContent = `🤖 AI (${aiTheme.name}) 50%`;
+          statusText.textContent = '50% vs 50% (🤝 引き分け)';
+          statusText.style.color = '#9ca3af';
+        }
+        return;
+      }
+
+      const validMoves = [];
+      for (let c = 0; c < 16; c++) {
+        if (heights[c] < 4) validMoves.push(c);
+      }
+      if (validMoves.length === 0) return;
+
+      // Determine search depth based on difficulty
+      let searchDepth = 5;
+      if (difficulty === 'easy') searchDepth = 3;
+      else if (difficulty === 'medium') searchDepth = 5;
+      else if (difficulty === 'hard') searchDepth = 7;
+      else if (difficulty === 'master') searchDepth = 8;
+      else if (difficulty === 'custom') searchDepth = Math.min(customDepth, 9);
+
+      // 1. Immediate Win Checks
+      const aiImmediateWins = [];
+      for (let col of validMoves) {
+        const z = heights[col];
+        const idx = col + z * 16;
+        board[idx] = aiPlayer;
+        if (checkWin(board)) aiImmediateWins.push(col);
+        board[idx] = 0;
+      }
+
+      const humanImmediateWins = [];
+      for (let col of validMoves) {
+        const z = heights[col];
+        const idx = col + z * 16;
+        board[idx] = humanPlayer;
+        if (checkWin(board)) humanImmediateWins.push(col);
+        board[idx] = 0;
+      }
+
+      clearSearchCaches();
+      // Keep evaluation snappy (max 150ms total for all columns)
+      const evalDeadline = Date.now() + 150;
+      let bestMoveScoreForHuman = -Infinity;
+
+      if (currentTurn === humanPlayer) {
+        for (let col of validMoves) {
+          const z = heights[col];
+          const idx = col + z * 16;
+
+          // Immediate human win
+          if (humanImmediateWins.includes(col)) {
+            coachingScores[col] = 9999;
+            bestMoveScoreForHuman = Math.max(bestMoveScoreForHuman, 9999);
+            continue;
+          }
+
+          // Opponent has 2+ immediate wins -> unblockable loss
+          if (aiImmediateWins.length >= 2) {
+            coachingScores[col] = -9999;
+            bestMoveScoreForHuman = Math.max(bestMoveScoreForHuman, -9999);
+            continue;
+          }
+
+          // Opponent has 1 immediate win and col is not blocking it -> loss
+          if (aiImmediateWins.length === 1 && !aiImmediateWins.includes(col)) {
+            coachingScores[col] = -9999;
+            bestMoveScoreForHuman = Math.max(bestMoveScoreForHuman, -9999);
+            continue;
+          }
+
+          // Suicide check: placing here lets opponent win immediately on top
+          let isSuicide = false;
+          if (heights[col] + 1 < 4) {
+            const topZ = heights[col] + 1;
+            const topIdx = col + topZ * 16;
+            board[topIdx] = aiPlayer;
+            if (checkWin(board)) isSuicide = true;
+            board[topIdx] = 0;
+          }
+          if (isSuicide) {
+            coachingScores[col] = -9999;
+            bestMoveScoreForHuman = Math.max(bestMoveScoreForHuman, -9999);
+            continue;
+          }
+
+          // Minimax search for remaining candidate moves
+          board[idx] = humanPlayer;
+          heights[col]++;
+
+          const aiRes = minimax(board, heights, searchDepth - 1, -Infinity, Infinity, true, aiPlayer, humanPlayer, evalDeadline, 1);
+
+          board[idx] = 0;
+          heights[col]--;
+
+          let colScore = 0;
+          if (aiRes.score >= 8000) {
+            colScore = -9999; // AI forced win
+          } else if (aiRes.score <= -8000) {
+            colScore = 9999;  // Human forced win
+          } else {
+            colScore = -aiRes.score;
+          }
+
+          coachingScores[col] = colScore;
+          bestMoveScoreForHuman = Math.max(bestMoveScoreForHuman, colScore);
+        }
+      } else {
+        // AI Turn: compute situation from human perspective
+        const searchRes = getBestMoveIterative(board, heights, searchDepth, 150, aiPlayer, humanPlayer);
+        bestMoveScoreForHuman = -searchRes.score;
+      }
+
+      // Convert bestMoveScoreForHuman to situation winrate
+      let evalScore = (bestMoveScoreForHuman === -Infinity) ? 0 : bestMoveScoreForHuman;
+      let humanPct = 50;
+      let statusDesc = '互角';
+
+      if (evalScore >= 8000) {
+        humanPct = 100;
+        statusDesc = `👤 ${name}必勝`;
+      } else if (evalScore <= -8000) {
+        humanPct = 0;
+        statusDesc = '🤖 AI必勝 (相手詰み)';
+      } else {
+        humanPct = Math.round(50 + (evalScore / 3000) * 40);
+        humanPct = Math.max(1, Math.min(99, humanPct));
+
+        if (humanPct >= 80) statusDesc = `👤 ${name}優勢`;
+        else if (humanPct >= 60) statusDesc = `👤 ${name}やや有利`;
+        else if (humanPct >= 42) statusDesc = '⚖️ 互角';
+        else if (humanPct >= 20) statusDesc = '🤖 AIやや有利';
+        else statusDesc = '🤖 AI優勢';
+      }
+
+      const aiPct = 100 - humanPct;
+
+      barHuman.style.width = `${humanPct}%`;
+      barAi.style.width = `${aiPct}%`;
+      if (barDivider) barDivider.style.left = `${humanPct}%`;
+
+      labelHuman.textContent = `👤 ${name} (${humanTheme.name}) ${humanPct}%`;
+      labelHuman.style.color = humanTextColor;
+
+      labelAi.textContent = `🤖 AI (${aiTheme.name}) ${aiPct}%`;
+      labelAi.style.color = aiTextColor;
+
+      statusText.textContent = `${humanPct}% vs ${aiPct}% (${statusDesc})`;
+      if (humanPct >= 60) statusText.style.color = humanTextColor;
+      else if (humanPct <= 40) statusText.style.color = aiTextColor;
+      else statusText.style.color = '#ffffff';
+    }
+
+    function setDifficulty(lvl) {
+      difficulty = lvl;
+      document.getElementById('btnLevelEasy').classList.toggle('active', lvl === 'easy');
+      document.getElementById('btnLevelMedium').classList.toggle('active', lvl === 'medium');
+      document.getElementById('btnLevelHard').classList.toggle('active', lvl === 'hard');
+      document.getElementById('btnLevelMaster').classList.toggle('active', lvl === 'master');
+      document.getElementById('btnLevelCustom').classList.toggle('active', lvl === 'custom');
+
+      const customPanel = document.getElementById('customDiffPanel');
+      if (customPanel) {
+        customPanel.style.display = lvl === 'custom' ? 'flex' : 'none';
+      }
+
+      updateCoachingAndEvalGauge();
+      renderUI();
+    }
+
+    function updateCustomSettings() {
+      const depthVal = parseInt(document.getElementById('customDepthSlider').value, 10);
+      const timeVal = parseFloat(document.getElementById('customTimeSlider').value);
+
+      customDepth = depthVal;
+      customTimeLimitSec = timeVal;
+
+      document.getElementById('customDepthBadge').textContent = `${depthVal}手`;
+      document.getElementById('customTimeBadge').textContent = `${timeVal.toFixed(1)}秒`;
+
+      if (difficulty === 'custom') {
+        updateCoachingAndEvalGauge();
+        renderUI();
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 4. Nickname, Time Limit, Particle FX & Champions Engine
+    // -------------------------------------------------------------
+    function handleNicknameChange(val) {
+      playerNickname = val;
+      const countBadge = document.getElementById('nicknameCountBadge');
+      if (countBadge) {
+        if (!val || val.trim().length === 0) {
+          countBadge.textContent = '未設定 (人間)';
+          countBadge.style.color = '#9ca3af';
+        } else if (val.length < 5) {
+          countBadge.textContent = `あと${5 - val.length}文字 (未設定時は人間)`;
+          countBadge.style.color = '#f59e0b';
+        } else {
+          countBadge.textContent = `✓ 設定中 (${val.length}文字)`;
+          countBadge.style.color = '#4ade80';
+        }
+      }
+
+      const name = getPlayerDisplayName();
+      const btnHuman = document.getElementById('btnHumanFirst');
+      const btnAi = document.getElementById('btnAIFirst');
+      if (btnHuman) btnHuman.textContent = `${name} 先手`;
+      if (btnAi) btnAi.textContent = `${name} 後手`;
+
+      updateStatusDisplay();
+      updateCoachingAndEvalGauge();
+      renderUI();
+    }
+
+    function changeTimeLimit(val) {
+      humanTimeLimitSec = parseInt(val, 10);
+      if (!isGameOver && currentTurn === humanPlayer && !isAiThinking) {
+        startTurnTimer();
+      } else {
+        stopTurnTimer();
+      }
+    }
+
+    function startTurnTimer() {
+      stopTurnTimer();
+      const timerCard = document.getElementById('turnTimerCard');
+      const timerBar = document.getElementById('turnTimerBar');
+      const timerText = document.getElementById('timerCountdownText');
+
+      if (!timerCard || !timerBar || !timerText) return;
+
+      if (isGameOver || isAiThinking || currentTurn !== humanPlayer || humanTimeLimitSec <= 0) {
+        timerCard.style.display = 'none';
+        return;
+      }
+
+      timerCard.style.display = 'flex';
+      timerCard.classList.remove('danger');
+      timerBar.style.width = '100%';
+      timerText.textContent = `${humanTimeLimitSec}.0秒`;
+
+      const totalMs = humanTimeLimitSec * 1000;
+      turnTimerStartMs = Date.now();
+      let lastTickSecond = -1;
+
+      turnTimerInterval = setInterval(() => {
+        const elapsed = Date.now() - turnTimerStartMs;
+        const remainingMs = Math.max(0, totalMs - elapsed);
+
+        const secStr = (remainingMs / 1000).toFixed(1);
+        timerText.textContent = `${secStr}秒`;
+        const pct = (remainingMs / totalMs) * 100;
+        timerBar.style.width = `${pct}%`;
+
+        if (remainingMs <= 3000) {
+          timerCard.classList.add('danger');
+          const currentSecInt = Math.ceil(remainingMs / 1000);
+          if (currentSecInt > 0 && currentSecInt !== lastTickSecond) {
+            lastTickSecond = currentSecInt;
+            playSoundEffect('tick');
+          }
+        } else {
+          timerCard.classList.remove('danger');
+        }
+
+        if (remainingMs <= 0) {
+          stopTurnTimer();
+          handleTimeoutLoss();
+        }
+      }, 50);
+    }
+
+    function stopTurnTimer() {
+      if (turnTimerInterval) {
+        clearInterval(turnTimerInterval);
+        turnTimerInterval = null;
+      }
+      const timerCard = document.getElementById('turnTimerCard');
+      if (timerCard) timerCard.style.display = 'none';
+    }
+
+    function handleTimeoutLoss() {
+      if (isGameOver) return;
+      isGameOver = true;
+      gameOverReason = 'timeout_loss';
+      winningLine = null;
+
+      updateStatusDisplay();
+      updateCoachingAndEvalGauge();
+      renderUI();
+
+      showGameResultModal('lose', `⏱️ 考慮時間制限（${humanTimeLimitSec}秒）を超過したため時間切れ負けとなりました。`);
+    }
+
+    // Champions Hall of Fame (AIに勝利した勇者たち・直近30名)
+    const HEROES_STORAGE_KEY = '3d_connect4_heroes_v1';
+
+    function getHeroesList() {
+      let heroes = [];
+      try {
+        const saved = localStorage.getItem(HEROES_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            // Remove hardcoded sample entries (hero-sample-*) while strictly preserving "えーくん" and real user plays
+            heroes = parsed.filter(item => {
+              if (!item) return false;
+              const isSample = (typeof item.id === 'string' && item.id.startsWith('hero-sample')) ||
+                               item.nickname === 'ゆうしゃハヤト' ||
+                               item.nickname === '空間マスターソラ' ||
+                               item.nickname === '四目キングコウタ';
+              return !isSample || item.nickname === 'えーくん';
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('LocalStorage access error:', e);
+      }
+
+      // If "えーくん" is not present, add "えーくん" as preserved player champion record
+      const hasEkun = heroes.some(h => h.nickname === 'えーくん');
+      if (!hasEkun) {
+        heroes.unshift({
+          id: 'hero-ekun-champion',
+          nickname: 'えーくん',
+          moves: 14,
+          dateStr: '2026/08/14 10:15',
+          order: '先手',
+          difficulty: '中級',
+          assist1: true,
+          assist2: true,
+          timeLimit: 'なし'
+        });
+      }
+
+      // Persist the sanitized clean list
+      try {
+        localStorage.setItem(HEROES_STORAGE_KEY, JSON.stringify(heroes.slice(0, 30)));
+      } catch (e) {}
+
+      return heroes;
+    }
+
+    function saveHeroVictory() {
+      const heroes = getHeroesList();
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      let diffName = '中級';
+      if (difficulty === 'easy') diffName = '初級';
+      else if (difficulty === 'medium') diffName = '中級';
+      else if (difficulty === 'hard') diffName = '上級';
+      else if (difficulty === 'master') diffName = 'マスター';
+      else if (difficulty === 'custom') diffName = `任意(${customDepth}手)`;
+
+      const newRecord = {
+        id: `hero-${Date.now()}`,
+        nickname: getPlayerDisplayName(),
+        moves: history.length,
+        dateStr: dateStr,
+        order: humanPlayer === 1 ? '先手' : '後手',
+        difficulty: diffName,
+        assist1: coachingMode1,
+        assist2: coachingMode2,
+        timeLimit: humanTimeLimitSec > 0 ? `${humanTimeLimitSec}秒` : 'なし'
+      };
+
+      // Add to front and limit to 30 records
+      heroes.unshift(newRecord);
+      const top30 = heroes.slice(0, 30);
+
+      try {
+        localStorage.setItem(HEROES_STORAGE_KEY, JSON.stringify(top30));
+      } catch (e) {
+        console.warn('LocalStorage save error:', e);
+      }
+    }
+
+    function openHeroesModal() {
+      const modal = document.getElementById('heroesModal');
+      const tbody = document.getElementById('heroesTableBody');
+      if (!modal || !tbody) return;
+
+      const heroes = getHeroesList();
+      tbody.innerHTML = '';
+
+      if (heroes.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px; color:#94a3b8;">まだ勇者の記録がありません。AIを倒して最初の勇者になろう！</td></tr>`;
+      } else {
+        heroes.forEach((h, idx) => {
+          const tr = document.createElement('tr');
+
+          let rankBadgeClass = 'rank-other';
+          if (idx === 0) rankBadgeClass = 'rank-1';
+          else if (idx === 1) rankBadgeClass = 'rank-2';
+          else if (idx === 2) rankBadgeClass = 'rank-3';
+
+          const assistBadges = [];
+          if (h.assist1) assistBadges.push('勝率');
+          if (h.assist2) assistBadges.push('戦術');
+          const assistStr = assistBadges.length > 0 ? assistBadges.join('+') : 'なし';
+
+          tr.innerHTML = `
+            <td style="text-align:center;"><span class="rank-badge ${rankBadgeClass}">${idx + 1}</span></td>
+            <td style="font-weight:700; color:#ffffff;"><span style="color:#fbbf24; margin-right:4px;">👑</span>${escapeHtml(h.nickname)}</td>
+            <td style="text-align:center; font-weight:800; color:#00f2ff;">${h.moves}手</td>
+            <td style="color:#94a3b8; font-size:10.5px;">${h.dateStr}</td>
+            <td style="font-size:10.5px; color:#cbd5e1;">
+              <span style="background:rgba(255,255,255,0.08); padding:2px 5px; border-radius:4px;">${h.order}</span>
+              <span style="background:rgba(0,242,255,0.15); color:#00f2ff; padding:2px 5px; border-radius:4px; margin-left:3px;">${h.difficulty}</span>
+              <span style="background:rgba(245,158,11,0.15); color:#fbbf24; padding:2px 5px; border-radius:4px; margin-left:3px;">⏱️${h.timeLimit}</span>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closeHeroesModal() {
+      const modal = document.getElementById('heroesModal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    function openHeroesFromModal() {
+      closeResultModalOnly();
+      openHeroesModal();
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // -------------------------------------------------------------
+    // Fullscreen Particle FX Engine (Fireworks / Snowfall)
+    // -------------------------------------------------------------
+    let fxAnimationId = null;
+    let fxParticles = [];
+    const fxCanvas = document.getElementById('fxCanvas');
+    const fxCtx = fxCanvas.getContext('2d');
+
+    function resizeFxCanvas() {
+      if (!fxCanvas) return;
+      fxCanvas.width = window.innerWidth;
+      fxCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeFxCanvas);
+    resizeFxCanvas();
+
+    function startParticleFx(type) {
+      stopParticleFx();
+      resizeFxCanvas();
+      fxCanvas.style.display = 'block';
+      fxParticles = [];
+
+      const w = fxCanvas.width;
+      const h = fxCanvas.height;
+
+      if (type === 'win') {
+        // Fireworks & Crackers (120+ particles)
+        const colors = ['#f43f5e', '#fbbf24', '#22c55e', '#00f2ff', '#a855f7', '#ec4899', '#ffffff'];
+        for (let i = 0; i < 140; i++) {
+          const originX = w * (0.2 + Math.random() * 0.6);
+          const originY = h * (0.2 + Math.random() * 0.4);
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 3 + Math.random() * 9;
+          fxParticles.push({
+            x: originX,
+            y: originY,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            radius: 3 + Math.random() * 4,
+            alpha: 1,
+            gravity: 0.12,
+            drag: 0.96,
+            shape: Math.random() > 0.4 ? 'circle' : 'confetti',
+            rotation: Math.random() * Math.PI * 2,
+            rotSpeed: (Math.random() - 0.5) * 0.2
+          });
+        }
+      } else {
+        // Loss / Timeout: Gentle snowflakes & hazy cool particles (80 particles)
+        for (let i = 0; i < 90; i++) {
+          fxParticles.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            vx: (Math.random() - 0.5) * 1.2,
+            vy: 1.2 + Math.random() * 2.2,
+            color: '#bae6fd',
+            radius: 2 + Math.random() * 3.5,
+            alpha: 0.4 + Math.random() * 0.5,
+            shape: 'snow',
+            wobble: Math.random() * Math.PI * 2
+          });
+        }
+      }
+
+      function renderFx() {
+        fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+        let aliveCount = 0;
+
+        for (let p of fxParticles) {
+          if (p.shape === 'snow') {
+            p.wobble += 0.03;
+            p.x += p.vx + Math.sin(p.wobble) * 0.8;
+            p.y += p.vy;
+            if (p.y > fxCanvas.height) {
+              p.y = -10;
+              p.x = Math.random() * fxCanvas.width;
+            }
+
+            fxCtx.save();
+            fxCtx.globalAlpha = p.alpha;
+            fxCtx.fillStyle = p.color;
+            fxCtx.beginPath();
+            fxCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            fxCtx.fill();
+            fxCtx.restore();
+            aliveCount++;
+          } else {
+            p.vx *= p.drag;
+            p.vy *= p.drag;
+            p.vy += p.gravity;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.alpha -= 0.007;
+
+            if (p.alpha > 0.01) {
+              aliveCount++;
+              fxCtx.save();
+              fxCtx.globalAlpha = Math.max(0, p.alpha);
+              fxCtx.fillStyle = p.color;
+
+              if (p.shape === 'confetti') {
+                p.rotation += p.rotSpeed;
+                fxCtx.translate(p.x, p.y);
+                fxCtx.rotate(p.rotation);
+                fxCtx.fillRect(-p.radius, -p.radius / 2, p.radius * 2, p.radius);
+              } else {
+                fxCtx.beginPath();
+                fxCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                fxCtx.fill();
+              }
+              fxCtx.restore();
+            }
+          }
+        }
+
+        if (aliveCount > 0) {
+          fxAnimationId = requestAnimationFrame(renderFx);
+        } else {
+          stopParticleFx();
+        }
+      }
+
+      fxAnimationId = requestAnimationFrame(renderFx);
+    }
+
+    function stopParticleFx() {
+      if (fxAnimationId) {
+        cancelAnimationFrame(fxAnimationId);
+        fxAnimationId = null;
+      }
+      if (fxCanvas) {
+        fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+        fxCanvas.style.display = 'none';
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Game Result Modal Trigger
+    // -------------------------------------------------------------
+    function showGameResultModal(resultType, customLossReason = '') {
+      const modal = document.getElementById('gameResultModal');
+      const card = document.getElementById('gameResultCard');
+      const icon = document.getElementById('modalHeroIcon');
+      const title = document.getElementById('modalResultTitle');
+      const author = document.getElementById('aiSpeechAuthor');
+      const speech = document.getElementById('aiSpeechText');
+
+      const statMoves = document.getElementById('statMovesCount');
+      const statDiff = document.getElementById('statDifficulty');
+      const statOrder = document.getElementById('statTurnOrder');
+      const statA1 = document.getElementById('statAssist1');
+      const statA2 = document.getElementById('statAssist2');
+      const statTime = document.getElementById('statTimeLimit');
+
+      if (!modal || !card) return;
+
+      const name = getPlayerDisplayName();
+
+      let diffLabel = '中級';
+      if (difficulty === 'easy') diffLabel = '初級';
+      else if (difficulty === 'medium') diffLabel = '中級';
+      else if (difficulty === 'hard') diffLabel = '上級';
+      else if (difficulty === 'master') diffLabel = 'マスター';
+      else if (difficulty === 'custom') diffLabel = `任意(${customDepth}手)`;
+
+      if (statMoves) statMoves.textContent = `${history.length}手`;
+      if (statDiff) statDiff.textContent = diffLabel;
+      if (statOrder) statOrder.textContent = humanPlayer === 1 ? '先手' : '後手';
+      if (statA1) statA1.textContent = coachingMode1 ? 'ON' : 'OFF';
+      if (statA2) statA2.textContent = coachingMode2 ? 'ON' : 'OFF';
+      if (statTime) statTime.textContent = humanTimeLimitSec > 0 ? `${humanTimeLimitSec}秒` : '制限なし';
+
+      if (resultType === 'win') {
+        card.className = 'modal-card result-modal-win';
+        icon.textContent = '🎉';
+        title.className = 'modal-result-title win';
+        title.textContent = `👑【${name}】の完全大勝利！`;
+        author.textContent = `🤖 AIから${name}へ（大絶賛！）:`;
+
+        const randomQuote = WIN_QUOTES[Math.floor(Math.random() * WIN_QUOTES.length)];
+        speech.textContent = randomQuote.replace(/{NAME}/g, name);
+
+        playSoundEffect('win');
+        startParticleFx('win');
+        saveHeroVictory();
+      } else if (resultType === 'lose') {
+        card.className = 'modal-card result-modal-lose';
+        icon.textContent = '❄️';
+        title.className = 'modal-result-title lose';
+        title.textContent = `🤖 AIの勝利！ ナイスファイト！`;
+        author.textContent = `🤖 AIから${name}へ（応援メッセージ）:`;
+
+        let randomQuote = LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)];
+        if (customLossReason) {
+          speech.textContent = `${customLossReason}\n${randomQuote.replace(/{NAME}/g, name)}`;
+        } else {
+          speech.textContent = randomQuote.replace(/{NAME}/g, name);
+        }
+
+        playSoundEffect('lose');
+        startParticleFx('lose');
+      } else {
+        // Draw
+        card.className = 'modal-card';
+        icon.textContent = '🤝';
+        title.className = 'modal-result-title draw';
+        title.textContent = `🤝 引き分け！ 白熱の名勝負！`;
+        author.textContent = `🤖 AIから${name}へ:`;
+        speech.textContent = `全64マスすべて埋め尽くす大激戦だったね！\nお互いの守りが完璧だったよ！次の一戦で決着をつけよう！`;
+        playSoundEffect('lose');
+        startParticleFx('lose');
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closeResultModalAndRestart() {
+      const modal = document.getElementById('gameResultModal');
+      if (modal) modal.classList.remove('active');
+      stopParticleFx();
+      resetGame();
+    }
+
+    function closeResultModalOnly() {
+      const modal = document.getElementById('gameResultModal');
+      if (modal) modal.classList.remove('active');
+      stopParticleFx();
+    }
+
+    // Toggle Assist Mode 1 (勝率予測・評価値)
+    function toggleCoaching1(enabled) {
+      coachingMode1 = enabled;
+      updateCoachingAndEvalGauge();
+      renderUI();
+    }
+
+    // Toggle Assist Mode 2 (戦術・リーチ・W/3連リーチ予告)
+    function toggleCoaching2(enabled) {
+      coachingMode2 = enabled;
+      updateCoachingAndEvalGauge();
+      renderUI();
+    }
+
+    function changeTheme(themeKey) {
+      currentThemeKey = themeKey;
+      const t = COLOR_THEMES[themeKey];
+      document.documentElement.style.setProperty('--p1-base', t.p1.base);
+      document.documentElement.style.setProperty('--p1-light', t.p1.light);
+      document.documentElement.style.setProperty('--p1-dark', t.p1.dark);
+      document.documentElement.style.setProperty('--p2-base', t.p2.base);
+      document.documentElement.style.setProperty('--p2-light', t.p2.light);
+      document.documentElement.style.setProperty('--p2-dark', t.p2.dark);
+      updateCoachingAndEvalGauge();
+      renderUI();
+    }
+
+    // Order Selection (First / Second)
+    function setOrder(order) {
+      humanPlayer = order;
+      aiPlayer = humanPlayer === 1 ? 2 : 1;
+      resetGame();
+    }
+
+    // 「待った」機能 (Undo Move: 1手戻す / 人間の手番まで巻き戻す)
+    function undoMove() {
+      if (isAiThinking || history.length === 0 || isAnimatingMove) return;
+      stopTurnTimer();
+      fallingBalls = [];
+      isAnimatingMove = false;
+
+      // Determine how many steps to pop
+      let stepsToUndo = 1;
+      if (!isGameOver) {
+        if (currentTurn === humanPlayer) {
+          stepsToUndo = Math.min(2, history.length);
+        } else {
+          stepsToUndo = 1;
+        }
+      } else {
+        if (winningLine && board[winningLine[0]] === aiPlayer) {
+          stepsToUndo = Math.min(2, history.length);
+        } else {
+          stepsToUndo = 1;
+        }
+      }
+
+      for (let s = 0; s < stepsToUndo; s++) {
+        if (history.length === 0) break;
+        const last = history.pop();
+        const col = last.col;
+        if (heights[col] > 0) {
+          const z = heights[col] - 1;
+          const cellIdx = col + z * 16;
+          board[cellIdx] = 0;
+          heights[col]--;
+        }
+      }
+
+      isGameOver = false;
+      gameOverReason = '';
+      winningLine = null;
+      currentTurn = humanPlayer; // Return control back to human
+
+      updateCoachingAndEvalGauge();
+      renderUI();
+      startTurnTimer();
+    }
+
+    // Execute Move with Smooth Fall & Drop Physics
+    function executeMove(col, knownScore = null) {
+      if (isGameOver || heights[col] >= 4 || isAiThinking || isAnimatingMove) return;
+      if (fallingBalls.some(b => b.col === col)) return;
+
+      stopTurnTimer();
+      isAnimatingMove = true;
+
+      const level = heights[col];
+      heights[col]++; // Reserve slot immediately
+      const movingPlayer = currentTurn;
+
+      playSoundEffect('drop');
+
+      fallingBalls.push({
+        col: col,
+        targetZ: level,
+        currentZ: 4.8, // Start slightly above the top of the pole
+        vy: 0.16,
+        player: movingPlayer,
+        knownScore: knownScore,
+        bounced: false
+      });
+    }
+
+    // Finalize Move after Landing Animation finishes
+    function finishBallLanding(ball) {
+      const cellIdx = ball.col + ball.targetZ * 16;
+      board[cellIdx] = ball.player;
+
+      const win = checkWin(board);
+      const isHuman = (ball.player === humanPlayer);
+
+      let score = ball.knownScore;
+      if (score === null) {
+        score = evaluateBoard(board, heights, ball.player);
+      }
+
+      history.push({
+        turnNum: history.length + 1,
+        isHuman: isHuman,
+        colName: COL_NAMES[ball.col],
+        score: score,
+        col: ball.col,
+        x: ball.col % 4,
+        y: Math.floor(ball.col / 4),
+        z: ball.targetZ
+      });
+
+      isAnimatingMove = false;
+
+      if (win) {
+        isGameOver = true;
+        winningLine = win.line;
+        const winner = board[winningLine[0]];
+        gameOverReason = (winner === humanPlayer) ? 'win' : 'lose';
+
+        updateCoachingAndEvalGauge();
+        renderUI();
+
+        setTimeout(() => {
+          showGameResultModal(gameOverReason);
+        }, 550);
+        return;
+      } else {
+        const filled = heights.reduce((a, b) => a + b, 0);
+        if (filled === 64) {
+          isGameOver = true; // Draw
+          gameOverReason = 'draw';
+          updateCoachingAndEvalGauge();
+          renderUI();
+
+          setTimeout(() => {
+            showGameResultModal('draw');
+          }, 550);
+          return;
+        } else {
+          currentTurn = (ball.player === 1) ? 2 : 1;
+        }
+      }
+
+      updateCoachingAndEvalGauge();
+      renderUI();
+
+      if (!isGameOver) {
+        if (currentTurn === aiPlayer) {
+          makeAiMove();
+        } else {
+          startTurnTimer();
+        }
+      }
+    }
+
+    function resetGame() {
+      stopTurnTimer();
+      stopParticleFx();
+      fallingBalls = [];
+      isAnimatingMove = false;
+      const resModal = document.getElementById('gameResultModal');
+      if (resModal) resModal.classList.remove('active');
+
+      board.fill(0);
+      heights.fill(0);
+      currentTurn = 1;
+      isGameOver = false;
+      gameOverReason = '';
+      winningLine = null;
+      history = [];
+      coachingScores.fill(null);
+      colTactics.fill(null);
+      isAiThinking = false;
+
+      const name = getPlayerDisplayName();
+      const btnHuman = document.getElementById('btnHumanFirst');
+      const btnAi = document.getElementById('btnAIFirst');
+      if (btnHuman) {
+        btnHuman.textContent = `${name} 先手`;
+        btnHuman.classList.toggle('active', humanPlayer === 1);
+      }
+      if (btnAi) {
+        btnAi.textContent = `${name} 後手`;
+        btnAi.classList.toggle('active', humanPlayer === 2);
+      }
+
+      updateCoachingAndEvalGauge();
+      renderUI();
+
+      if (currentTurn === aiPlayer) {
+        makeAiMove();
+      } else {
+        startTurnTimer();
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 5. UI Rendering & DOM Updates
+    // -------------------------------------------------------------
+    function updateStatusDisplay() {
+      const badge = document.getElementById('statusBadge');
+      const text = document.getElementById('statusText');
+      const name = getPlayerDisplayName();
+
+      badge.className = 'status-badge';
+
+      if (isGameOver) {
+        if (winningLine) {
+          const winner = board[winningLine[0]];
+          if (winner === humanPlayer) {
+            text.textContent = `🎉 ${name}の勝ちです！`;
+            badge.classList.add('win-human');
+          } else {
+            text.textContent = '🤖 AIの勝利です！';
+            badge.classList.add('win-ai');
+          }
+        } else if (gameOverReason === 'timeout_loss') {
+          text.textContent = `⏱️ ${name}の時間切れ負けです！`;
+          badge.classList.add('win-ai');
+        } else {
+          text.textContent = '🤝 引き分けです！';
+        }
+      } else if (isAiThinking) {
+        text.textContent = '🤖 AIが思考中...';
+      } else if (currentTurn === humanPlayer) {
+        text.textContent = `👤 ${name}の手番です`;
+      } else {
+        text.textContent = '🤖 AIの手番です';
+      }
+    }
+
+    function renderUI() {
+      updateStatusDisplay();
+
+      // Update Undo Buttons status
+      const canUndo = (history.length > 0) && !isAiThinking;
+      const btnUndoMain = document.getElementById('btnUndoMain');
+      const btnUndoTool = document.getElementById('btnUndoTool');
+      const btnUndoHistory = document.getElementById('btnUndoHistory');
+
+      if (btnUndoMain) btnUndoMain.disabled = !canUndo;
+      if (btnUndoTool) btnUndoTool.disabled = !canUndo;
+      if (btnUndoHistory) btnUndoHistory.disabled = !canUndo;
+
+      // Update Tactics Alert Banner (Assist Mode 2)
+      const tacticsBanner = document.getElementById('tacticsBanner');
+      const tacticsIcon = document.getElementById('tacticsBannerIcon');
+      const tacticsText = document.getElementById('tacticsBannerText');
+
+      if (tacticsBanner && tacticsIcon && tacticsText) {
+        if (coachingMode2 && !isGameOver && currentTurn === humanPlayer) {
+          tacticsBanner.style.display = 'flex';
+          tacticsIcon.textContent = tacticsSummary.icon || '⚡';
+          tacticsText.textContent = tacticsSummary.alerts.join(' / ') || '戦術チェック中';
+        } else {
+          tacticsBanner.style.display = 'none';
+        }
+      }
+
+      // Render 16 Quick Selector Buttons
+      const selector = document.getElementById('quickSelector');
+      selector.innerHTML = '';
+
+      for (let i = 0; i < 16; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'col-btn';
+        if (hoveredCol === i) btn.style.borderColor = 'var(--accent-color)';
+
+        const isFull = heights[i] >= 4;
+        btn.disabled = isFull || isGameOver || (currentTurn !== humanPlayer) || isAiThinking;
+
+        btn.onmouseenter = () => { hoveredCol = i; };
+        btn.onmouseleave = () => { hoveredCol = -1; };
+        btn.onclick = () => executeMove(i);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'col-name';
+        nameSpan.textContent = COL_NAMES[i];
+
+        const heightSpan = document.createElement('span');
+        heightSpan.className = 'col-height';
+        heightSpan.textContent = `${heights[i]}/4`;
+
+        btn.appendChild(nameSpan);
+        btn.appendChild(heightSpan);
+
+        // Assist Mode 1: Win Rate / Score Badge
+        if (coachingMode1 && coachingScores[i] !== null && !isFull) {
+          const score = coachingScores[i];
+          const scoreBadge = document.createElement('span');
+          scoreBadge.className = 'col-score-badge';
+
+          let signStr = '';
+          if (score >= 9000) {
+            signStr = '必勝';
+            scoreBadge.classList.add('score-green');
+          } else if (score <= -9000) {
+            signStr = '必敗';
+            scoreBadge.classList.add('score-red');
+          } else {
+            let moveWinPct = Math.round(50 + (score / 3000) * 40);
+            moveWinPct = Math.max(1, Math.min(99, moveWinPct));
+            signStr = `${moveWinPct}%`;
+
+            if (moveWinPct >= 60) {
+              scoreBadge.classList.add('score-green');
+            } else if (moveWinPct >= 40) {
+              scoreBadge.classList.add('score-yellow');
+            } else {
+              scoreBadge.classList.add('score-red');
+            }
+          }
+
+          scoreBadge.textContent = signStr;
+          btn.appendChild(scoreBadge);
+        }
+
+        // Assist Mode 2: Tactical Tag Badge
+        if (coachingMode2 && colTactics[i] !== null && !isFull) {
+          const tac = colTactics[i];
+          const tacBadge = document.createElement('span');
+          tacBadge.className = `col-score-badge ${tac.badgeClass || 'tactics-badge-reach'}`;
+          tacBadge.textContent = tac.shortLabel;
+          btn.appendChild(tacBadge);
+        }
+
+        selector.appendChild(btn);
+      }
+
+      // Render Move History
+      const histList = document.getElementById('historyList');
+      histList.innerHTML = '';
+
+      [...history].reverse().forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+
+        const left = document.createElement('div');
+        left.className = 'history-left';
+
+        const num = document.createElement('span');
+        num.className = 'turn-num';
+        num.textContent = `#${String(item.turnNum).padStart(2, '0')}`;
+
+        const pTag = document.createElement('span');
+        pTag.className = `player-tag ${item.isHuman ? 'player-human-tag' : 'player-ai-tag'}`;
+        pTag.textContent = item.isHuman ? getPlayerDisplayName() : 'AI';
+
+        const pos = document.createElement('span');
+        pos.className = 'move-pos';
+        pos.textContent = `列 ${item.colName}`;
+
+        left.appendChild(num);
+        left.appendChild(pTag);
+        left.appendChild(pos);
+
+        const evalBadge = document.createElement('span');
+        evalBadge.className = 'eval-badge';
+
+        const val = item.score;
+        let valStr = '';
+        if (val >= 9000) valStr = '勝利手';
+        else if (val <= -9000) valStr = '敗北危局';
+        else valStr = val > 0 ? `+${val}` : `${val}`;
+
+        if (val >= 30) {
+          evalBadge.classList.add('score-green');
+        } else if (val >= -150) {
+          evalBadge.classList.add('score-yellow');
+        } else {
+          evalBadge.classList.add('score-red');
+        }
+
+        evalBadge.textContent = `[${valStr}]`;
+
+        div.appendChild(left);
+        div.appendChild(evalBadge);
+        histList.appendChild(div);
+      });
+    }
+
+    // -------------------------------------------------------------
+    // 6. 3D HTML5 Canvas Perspective Projection Engine
+    // -------------------------------------------------------------
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const container = canvas.parentElement;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = container.clientWidth * dpr;
+      canvas.height = container.clientHeight * dpr;
+      ctx.scale(dpr, dpr);
+    }
+
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      switchMobileTab(currentMobileTab);
+      autoAdjustCameraForDevice();
+    });
+    resizeCanvas();
+    autoAdjustCameraForDevice();
+
+
+    // -------------------------------------------------------------
+    // Mobile Responsive & Touch Control Engine
+    // -------------------------------------------------------------
+    let currentMobileTab = (typeof window !== 'undefined' && window.innerWidth <= 768) ? 'settings' : 'stage';
+
+    function goToBattleScreen() {
+      playSoundEffect('tap');
+      switchMobileTab('stage');
+      const stageElem = document.getElementById('panelStage');
+      if (stageElem) {
+        stageElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function switchMobileTab(tab) {
+      currentMobileTab = tab;
+      
+      const pStage = document.getElementById('panelStage');
+      const pSettings = document.getElementById('panelSettings');
+      const pHistory = document.getElementById('panelHistory');
+
+      const btnStage = document.getElementById('tabBtnStage');
+      const btnSettings = document.getElementById('tabBtnSettings');
+      const btnHistory = document.getElementById('tabBtnHistory');
+
+      if (window.innerWidth <= 768) {
+        pStage.classList.toggle('tab-hidden-mobile', tab !== 'stage');
+        pSettings.classList.toggle('tab-hidden-mobile', tab !== 'settings');
+        pHistory.classList.toggle('tab-hidden-mobile', tab !== 'history');
+
+        if (btnStage) btnStage.classList.toggle('active', tab === 'stage');
+        if (btnSettings) btnSettings.classList.toggle('active', tab === 'settings');
+        if (btnHistory) btnHistory.classList.toggle('active', tab === 'history');
+      } else {
+        pStage.classList.remove('tab-hidden-mobile');
+        pSettings.classList.remove('tab-hidden-mobile');
+        pHistory.classList.remove('tab-hidden-mobile');
+      }
+
+      setTimeout(() => {
+        resizeCanvas();
+      }, 50);
+    }
+
+    function autoAdjustCameraForDevice() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      // Adjust camera distance for mobile / tablet screens so full 3D tower fits with ample vertical space
+      if (w <= 480) {
+        cameraDistance = h > w ? 560 : 490;
+      } else if (w <= 768) {
+        cameraDistance = h > w ? 510 : 450;
+      } else if (w <= 1100) {
+        cameraDistance = 450;
+      } else {
+        cameraDistance = 400;
+      }
+    }
+
+    // Touch Event Processing for Mobile & Tablet (Rotate, Pinch Zoom, Tap Move)
+    let touchStartDist = 0;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isTouchTapCandidate = false;
+
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        isDragging = true;
+        isTouchTapCandidate = true;
+        lastMouseX = e.touches[0].clientX;
+        lastMouseY = e.touches[0].clientY;
+        touchStartX = lastMouseX;
+        touchStartY = lastMouseY;
+      } else if (e.touches.length === 2) {
+        isDragging = false;
+        isTouchTapCandidate = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        touchStartDist = Math.hypot(dx, dy);
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault(); // Prevent body scroll while manipulating 3D stage
+
+      if (e.touches.length === 1 && isDragging) {
+        const cx = e.touches[0].clientX;
+        const cy = e.touches[0].clientY;
+        const dx = cx - lastMouseX;
+        const dy = cy - lastMouseY;
+
+        if (Math.hypot(cx - touchStartX, cy - touchStartY) > 10) {
+          isTouchTapCandidate = false;
+        }
+
+        cameraAngleY += dx * 0.008;
+        cameraAngleX += dy * 0.008;
+        cameraAngleX = Math.max(-1.25, Math.min(1.25, cameraAngleX));
+
+        lastMouseX = cx;
+        lastMouseY = cy;
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const newDist = Math.hypot(dx, dy);
+
+        if (touchStartDist > 0) {
+          const factor = touchStartDist / newDist;
+          zoomCamera(factor > 1 ? 1.03 : 0.97);
+          touchStartDist = newDist;
+        }
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+      if (isTouchTapCandidate && currentTurn === humanPlayer && !isAnimatingMove) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = touchStartX - rect.left;
+        const my = touchStartY - rect.top;
+
+        let closestCol = -1;
+        let minDist = 44; // Touch tap tolerance (Easy direct tap for children)
+
+        for (let col = 0; col < 16; col++) {
+          const cx = col % 4;
+          const cy = Math.floor(col / 4);
+
+          const pBottom = project(cx, cy, 0);
+          const pTop = project(cx, cy, 3);
+
+          const dist = distToSegment({ x: mx, y: my }, pBottom, pTop);
+          if (dist < minDist) {
+            minDist = dist;
+            closestCol = col;
+          }
+        }
+
+        if (closestCol !== -1 && heights[closestCol] < 4 && !isGameOver) {
+          executeMove(closestCol);
+        }
+      }
+
+      isDragging = false;
+      isTouchTapCandidate = false;
+      touchStartDist = 0;
+    });
+
+
+    // 3D Projection Math
+    function project(x, y, z) {
+      const gridSpacing = 50;
+      // Center origin at 1.5, 1.5, 1.5
+      const cx = (x - 1.5) * gridSpacing;
+      const cy = (y - 1.5) * gridSpacing;
+      const cz = (z - 1.5) * gridSpacing;
+
+      // Yaw rotation (around Z-axis)
+      const cosY = Math.cos(cameraAngleY);
+      const sinY = Math.sin(cameraAngleY);
+      const x1 = cx * cosY - cy * sinY;
+      const y1 = cx * sinY + cy * cosY;
+      const z1 = cz;
+
+      // Pitch rotation (around rotated X-axis)
+      const cosX = Math.cos(cameraAngleX);
+      const sinX = Math.sin(cameraAngleX);
+      const x2 = x1;
+      const y2 = y1 * sinX - z1 * cosX;
+      const z2 = y1 * cosX + z1 * sinX;
+
+      // Perspective transformation
+      const distance = cameraDistance;
+      const scale = distance / (distance + y2);
+
+      const w = canvas.width / (window.devicePixelRatio || 1);
+      const h = canvas.height / (window.devicePixelRatio || 1);
+
+      const px = w / 2 + x2 * scale;
+      // Offset vertical center downwards slightly (+ 20px on mobile, + 12px on desktop)
+      // This guarantees the top of all 4 tiers, dropping balls, and hint tooltips never clip off the top edge
+      const yOffset = (window.innerWidth <= 768 ? Math.round(h * 0.05 + 14) : Math.round(h * 0.03 + 8));
+      const py = h / 2 - z2 * scale + yOffset;
+
+      return { x: px, y: py, scale: scale, depth: y2 };
+    }
+
+    // Canvas Interaction (Rotate Camera)
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+
+        cameraAngleY += dx * 0.008;
+        cameraAngleX += dy * 0.008;
+
+        // Clamp Pitch Angle
+        cameraAngleX = Math.max(-1.25, Math.min(1.25, cameraAngleX));
+
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+      } else {
+        // Raycast check for hover on 16 columns
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        let closestCol = -1;
+        let minDist = 42;
+
+        for (let col = 0; col < 16; col++) {
+          const cx = col % 4;
+          const cy = Math.floor(col / 4);
+
+          const pBottom = project(cx, cy, 0);
+          const pTop = project(cx, cy, 3);
+
+          // Distance from point (mx, my) to pole line segment
+          const dist = distToSegment({ x: mx, y: my }, pBottom, pTop);
+          if (dist < minDist) {
+            minDist = dist;
+            closestCol = col;
+          }
+        }
+
+        if (closestCol !== hoveredCol) {
+          hoveredCol = closestCol;
+          renderUI();
+        }
+      }
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      zoomCamera(e.deltaY > 0 ? 1.08 : 0.92);
+    }, { passive: false });
+
+    canvas.addEventListener('click', () => {
+      if (!isDragging && hoveredCol !== -1 && currentTurn === humanPlayer && !isAnimatingMove) {
+        executeMove(hoveredCol);
+      }
+    });
+
+    function resetCamera() {
+      autoAdjustCameraForDevice();
+      cameraAngleX = 0.5;
+      cameraAngleY = 0.78;
+      cameraDistance = 380;
+    }
+
+    function zoomCamera(factor) {
+      cameraDistance = Math.max(200, Math.min(700, cameraDistance * factor));
+    }
+
+    function distToSegment(p, v, w) {
+      const l2 = (v.x - w.x) ** 2 + (v.y - w.y) ** 2;
+      if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y);
+      let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
+    }
+
+    // Render 3D Scene Loop
+    function draw3DScene() {
+      const w = canvas.width / (window.devicePixelRatio || 1);
+      const h = canvas.height / (window.devicePixelRatio || 1);
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Physics update for active dropping balls
+      for (let i = fallingBalls.length - 1; i >= 0; i--) {
+        const ball = fallingBalls[i];
+        ball.vy += 0.045; // Gentle gravity
+        ball.currentZ -= ball.vy;
+
+        if (ball.currentZ <= ball.targetZ) {
+          if (!ball.bounced) {
+            ball.currentZ = ball.targetZ;
+            ball.vy = -0.065; // Soft bounce
+            ball.bounced = true;
+            playSoundEffect('land');
+          } else {
+            ball.currentZ = ball.targetZ;
+            fallingBalls.splice(i, 1);
+            finishBallLanding(ball);
+          }
+        }
+      }
+
+      const renderList = [];
+      const t = COLOR_THEMES[currentThemeKey];
+
+      // 1. Base Grid Floor
+      const p00 = project(-0.8, -0.8, -0.6);
+      const p30 = project(3.8, -0.8, -0.6);
+      const p33 = project(3.8, 3.8, -0.6);
+      const p03 = project(-0.8, 3.8, -0.6);
+
+      renderList.push({
+        type: 'floor',
+        depth: (p00.depth + p30.depth + p33.depth + p03.depth) / 4,
+        draw: () => {
+          ctx.beginPath();
+          ctx.moveTo(p00.x, p00.y);
+          ctx.lineTo(p30.x, p30.y);
+          ctx.lineTo(p33.x, p33.y);
+          ctx.lineTo(p03.x, p03.y);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Floor grid lines
+          for (let i = 0; i <= 3; i++) {
+            const pa = project(i, 0, -0.55);
+            const pb = project(i, 3, -0.55);
+            ctx.beginPath();
+            ctx.moveTo(pa.x, pa.y);
+            ctx.lineTo(pb.x, pb.y);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            const pc = project(0, i, -0.55);
+            const pd = project(3, i, -0.55);
+            ctx.beginPath();
+            ctx.moveTo(pc.x, pc.y);
+            ctx.lineTo(pd.x, pd.y);
+            ctx.stroke();
+          }
+        }
+      });
+
+      // 2. 16 Solid Poles with Glow Guidance
+      for (let col = 0; col < 16; col++) {
+        const cx = col % 4;
+        const cy = Math.floor(col / 4);
+
+        const pBot = project(cx, cy, -0.5);
+        const pTop = project(cx, cy, 3.5);
+
+        renderList.push({
+          type: 'pole',
+          col: col,
+          depth: Math.max(pBot.depth, pTop.depth) + 0.001,
+          draw: () => {
+            const isHovered = (hoveredCol === col && heights[col] < 4 && !isGameOver && currentTurn === humanPlayer);
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(pBot.x, pBot.y);
+            ctx.lineTo(pTop.x, pTop.y);
+            ctx.lineWidth = isHovered ? Math.max(5, 8 * pBot.scale) : Math.max(4, 7 * pBot.scale);
+            
+            if (isHovered) {
+              ctx.strokeStyle = '#38bdf8';
+              ctx.shadowColor = '#00f2ff';
+              ctx.shadowBlur = 14;
+            } else {
+              ctx.strokeStyle = '#475569';
+            }
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Pole cap
+            ctx.beginPath();
+            ctx.arc(pTop.x, pTop.y, (isHovered ? 5.5 : 4) * pTop.scale, 0, Math.PI * 2);
+            ctx.fillStyle = isHovered ? '#00f2ff' : '#94a3b8';
+            ctx.fill();
+            ctx.restore();
+          }
+        });
+      }
+
+      // 3. Placed Spheres
+      for (let idx = 0; idx < 64; idx++) {
+        const val = board[idx];
+        if (val === 0) continue;
+
+        const cx = idx % 4;
+        const cy = Math.floor(idx / 4) % 4;
+        const cz = Math.floor(idx / 16);
+
+        const p = project(cx, cy, cz);
+        const radius = 18 * p.scale;
+
+        renderList.push({
+          type: 'sphere',
+          depth: p.depth,
+          draw: () => {
+            const colors = val === 1 ? t.p1 : t.p2;
+
+            // 3D Radial Gradient Shading
+            const grad = ctx.createRadialGradient(
+              p.x - radius * 0.3,
+              p.y - radius * 0.3,
+              radius * 0.1,
+              p.x,
+              p.y,
+              radius
+            );
+            grad.addColorStop(0, colors.light);
+            grad.addColorStop(0.7, colors.base);
+            grad.addColorStop(1, colors.dark);
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        });
+      }
+
+      // 4. Actively Falling Spheres (Drop Physics Animation)
+      for (let ball of fallingBalls) {
+        const cx = ball.col % 4;
+        const cy = Math.floor(ball.col / 4);
+        const cz = ball.currentZ;
+
+        const p = project(cx, cy, cz);
+        const radius = 18 * p.scale;
+
+        renderList.push({
+          type: 'fallingBall',
+          depth: p.depth - 0.05,
+          draw: () => {
+            const colors = ball.player === 1 ? t.p1 : t.p2;
+            const grad = ctx.createRadialGradient(
+              p.x - radius * 0.3,
+              p.y - radius * 0.3,
+              radius * 0.1,
+              p.x,
+              p.y,
+              radius
+            );
+            grad.addColorStop(0, colors.light);
+            grad.addColorStop(0.7, colors.base);
+            grad.addColorStop(1, colors.dark);
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = grad;
+            ctx.shadowColor = colors.light;
+            ctx.shadowBlur = 10;
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+          }
+        });
+      }
+
+      // 5. Hover Preview Ghost Ball & Child-Friendly Drop Guidance
+      if (hoveredCol !== -1 && heights[hoveredCol] < 4 && !isGameOver && currentTurn === humanPlayer && !isAnimatingMove) {
+        const cx = hoveredCol % 4;
+        const cy = Math.floor(hoveredCol / 4);
+        const cz = heights[hoveredCol];
+
+        const floatOffset = Math.sin(Date.now() * 0.007) * 0.08;
+        const p = project(cx, cy, cz + floatOffset);
+        const radius = 18 * p.scale;
+
+        // Top guidance text position
+        const pGuide = project(cx, cy, 3.8);
+
+        renderList.push({
+          type: 'preview',
+          depth: p.depth - 1, // Draw in front
+          draw: () => {
+            const colors = currentTurn === 1 ? t.p1 : t.p2;
+            ctx.save();
+
+            // Luminous pulsing target ring around target slot
+            const pulse = (Math.sin(Date.now() * 0.008) + 1) * 0.5;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, radius * (1.1 + pulse * 0.2), 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(0, 242, 255, 0.6)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Translucent Ghost Ball
+            ctx.globalAlpha = 0.55;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = colors.light;
+            ctx.fill();
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // "🎯 ここに落とす" guidance tooltip for children
+            if (!coachingMode1 && !coachingMode2) {
+              const guideStr = '🎯 タップで落とす';
+              ctx.globalAlpha = 0.95;
+              ctx.font = 'bold 11px sans-serif';
+              const textWidth = ctx.measureText(guideStr).width;
+
+              ctx.fillStyle = 'rgba(14, 165, 233, 0.95)';
+              ctx.beginPath();
+              ctx.roundRect(pGuide.x - textWidth / 2 - 7, pGuide.y - 10, textWidth + 14, 20, 6);
+              ctx.fill();
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+
+              ctx.fillStyle = '#ffffff';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(guideStr, pGuide.x, pGuide.y);
+            }
+
+            ctx.restore();
+          }
+        });
+      }
+
+      // 6. Assist Mode 1 & Assist Mode 2 Labels on 3D Canvas
+      if ((coachingMode1 || coachingMode2) && currentTurn === humanPlayer && !isGameOver) {
+        for (let col = 0; col < 16; col++) {
+          if (heights[col] >= 4) continue;
+
+          const cx = col % 4;
+          const cy = Math.floor(col / 4);
+          const p = project(cx, cy, 3.8);
+
+          // Assist Mode 1: Win rate / score label
+          if (coachingMode1 && coachingScores[col] !== null) {
+            const score = coachingScores[col];
+            const yOffset = (coachingMode2 && colTactics[col] !== null) ? -13 : 0;
+
+            renderList.push({
+              type: 'assist1Label',
+              depth: p.depth - 2,
+              draw: () => {
+                let scoreStr = '';
+                let bg = 'rgba(245, 158, 11, 0.9)';
+
+                if (score >= 9000) {
+                  scoreStr = '必勝';
+                  bg = 'rgba(16, 185, 129, 0.95)';
+                } else if (score <= -9000) {
+                  scoreStr = '必敗';
+                  bg = 'rgba(239, 68, 68, 0.95)';
+                } else {
+                  let winPct = Math.round(50 + (score / 3000) * 40);
+                  winPct = Math.max(1, Math.min(99, winPct));
+                  scoreStr = `${winPct}%`;
+                  if (winPct >= 60) bg = 'rgba(16, 185, 129, 0.9)';
+                  else if (winPct >= 40) bg = 'rgba(100, 116, 139, 0.9)';
+                  else bg = 'rgba(239, 68, 68, 0.9)';
+                }
+
+                ctx.font = 'bold 11px sans-serif';
+                const textWidth = ctx.measureText(scoreStr).width;
+
+                ctx.fillStyle = bg;
+                ctx.beginPath();
+                ctx.roundRect(p.x - textWidth / 2 - 6, p.y + yOffset - 9, textWidth + 12, 18, 5);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(scoreStr, p.x, p.y + yOffset);
+              }
+            });
+          }
+
+          // Assist Mode 2: Tactical Label (王手 / Wリーチ狙い / 3連リーチ狙い / 防ぎ所)
+          if (coachingMode2 && colTactics[col] !== null) {
+            const tac = colTactics[col];
+            const yOffset = (coachingMode1 && coachingScores[col] !== null) ? 10 : 0;
+
+            renderList.push({
+              type: 'assist2Label',
+              depth: p.depth - 3,
+              draw: () => {
+                ctx.font = 'bold 10px sans-serif';
+                const textWidth = ctx.measureText(tac.shortLabel).width;
+
+                ctx.fillStyle = tac.bg || 'rgba(245, 158, 11, 0.95)';
+                ctx.beginPath();
+                ctx.roundRect(p.x - textWidth / 2 - 6, p.y + yOffset - 9, textWidth + 12, 18, 5);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.fillStyle = tac.text || '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(tac.shortLabel, p.x, p.y + yOffset);
+              }
+            });
+          }
+        }
+      }
+
+      // 7. Vivid Winning Line Neon Laser & Numbered 1~4 Badges
+      if (winningLine) {
+        const idx0 = winningLine[0];
+        const idx3 = winningLine[3];
+
+        const p0 = project(idx0 % 4, Math.floor(idx0 / 4) % 4, Math.floor(idx0 / 16));
+        const p3 = project(idx3 % 4, Math.floor(idx3 / 4) % 4, Math.floor(idx3 / 16));
+
+        renderList.push({
+          type: 'winningLine',
+          depth: -9999, // Render on top
+          draw: () => {
+            ctx.save();
+
+            // Outer Neon Laser Beam
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.lineWidth = 14;
+            ctx.strokeStyle = 'rgba(52, 211, 153, 0.85)';
+            ctx.lineCap = 'round';
+            ctx.shadowColor = '#10b981';
+            ctx.shadowBlur = 22;
+            ctx.stroke();
+
+            // Inner Core Laser Beam
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+
+            // Highlight all 4 spheres with expanding pulse rings and 1, 2, 3, 4 badges
+            for (let step = 0; step < 4; step++) {
+              const cell = winningLine[step];
+              const sx = cell % 4;
+              const sy = Math.floor(cell / 4) % 4;
+              const sz = Math.floor(cell / 16);
+              const ps = project(sx, sy, sz);
+              const rad = 18 * ps.scale;
+
+              const pulseRing = (Math.sin(Date.now() * 0.01 + step * 0.8) + 1) * 0.5;
+
+              // Pulsing halo
+              ctx.beginPath();
+              ctx.arc(ps.x, ps.y, rad * (1.15 + pulseRing * 0.3), 0, Math.PI * 2);
+              ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+              ctx.lineWidth = 2.5;
+              ctx.stroke();
+
+              // Numbered Step Badge
+              const badgeNum = `${step + 1}`;
+              ctx.fillStyle = '#f59e0b';
+              ctx.beginPath();
+              ctx.arc(ps.x, ps.y, 9 * ps.scale, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+
+              ctx.fillStyle = '#000000';
+              ctx.font = `bold ${Math.max(9, Math.round(11 * ps.scale))}px sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(badgeNum, ps.x, ps.y);
+            }
+
+            ctx.restore();
+          }
+        });
+      }
+
+      // Painter's Algorithm: Sort by depth back-to-front
+      renderList.sort((a, b) => b.depth - a.depth);
+
+      renderList.forEach(obj => obj.draw());
+
+      requestAnimationFrame(draw3DScene);
+    }
+
+    // Check environment: Show download button ONLY on Developer URL / Local
+    const isDevEnv = window.location.hostname.includes('ais-dev') || 
+                     window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1';
+    const docBtn = document.getElementById('docDownloadBtn');
+    if (docBtn) {
+      docBtn.style.display = isDevEnv ? 'inline-flex' : 'none';
+    }
+
+    // Start 3D Loop
+    requestAnimationFrame(draw3DScene);
+
+    // Initial Setup
+    resetGame();
+    switchMobileTab(currentMobileTab);
+  </script>
+</body>
+</html>

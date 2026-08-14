@@ -1,0 +1,6 @@
+{
+  "name": "立体四目並べ３D　AIに勝つぞ～",
+  "description": "5歳〜12歳のお子様も楽しめる立体四目並べ3D。AI対戦、勝率予測＆戦術アシスト、考慮時間制限、勇者記録、華やかな勝敗演出を搭載。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

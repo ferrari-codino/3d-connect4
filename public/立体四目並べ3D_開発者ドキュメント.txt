@@ -1,0 +1,2876 @@
+================================================================================
+【開発者用ドキュメント】立体四目並べ 3D (3D Spatial Strategy Matrix)
+================================================================================
+作成日: 2026年8月13日
+更新日: 2026年8月13日（形勢勝率ゲージ機能追加・コマ色同期・置換表キャッシュ不整合バグ修正）
+アプリケーション名: 立体四目並べ 3D
+言語/スタック: HTML5, CSS3, Vanilla JavaScript, Canvas 2D Pseudo-3D Projection
+対応環境: モバイル (iOS / Android), タブレット, PC (マルチブラウザ対応)
+
+--------------------------------------------------------------------------------
+1. アプリケーション概要・システム仕様
+--------------------------------------------------------------------------------
+本アプリケーションは、4×4×4 の立体空間（計64マス・16本の支柱）で行う3D対戦型コネクトフォー（立体四目並べ）ゲームです。
+
+■ 基本ルール
+- 4×4の16本の垂直な支柱に対して、プレイヤーとAI（またはプレイヤー同士）が交互に玉を投入します。
+- 重力ルールにより、各支柱には下から順に最大4個まで玉が積み上がります。
+- 縦・横・高さ・各種斜め（平面斜めおよび立体対角線）のいずれかで「自色の玉を4連続」で並べたプレイヤーが勝利となります。
+- 計76通りのリーチ/勝利ライン（直線42本、平面対角線24本、立体対角線10本）が存在します。
+
+■ 中央4箇所 vs 外側支柱の戦術的価値
+- 【中央4本の支柱 (x=1..2, y=1..2)】:
+  1本あたり最大13〜15本もの勝利ライン（平面の縦横斜め＋3D立体対角線）が集中する「天王山」です。
+  立体コア領域 (z=1, z=2) を先占することが勝利の鍵となります。
+- 【外側・コーナー支柱】:
+  交差する勝利ライン数は7〜8本と約半分のポテンシャルにとどまります。
+
+■ AI思考エンジン及び「形勢（勝率表示）」アルゴリズム
+- 将棋・チェスAIと同様の「最善手相互指し」を仮定した局面勝率パーセンテージ（0%〜100%）を算出。
+- 人間側・AI側のコマカラーテーマ（デフォルト：黒×白）と完全に連動し、メーターバーの色およびラベル表記がリアルタイムにコマの色（例: 黒 / 白）と一致します。
+- 探索キャッシュ（Transposition Table）のプレイヤー視点別クリア処理（Iterative Deepening Search）を徹底適用し、着手直後の不自然な勝率急変動バグを根絶。
+
+--------------------------------------------------------------------------------
+2. UI / UX 及び レスポンシブデザイン仕様
+--------------------------------------------------------------------------------
+■ 画面レスポンシブブレイクポイント
+- PC環境 (巾1100px以上):
+  左（対局設定パネル）、中央（3Dキャンバスステージ＋形勢勝率ゲージ）、右（着手履歴ログ）の3カラム並列表示。
+- タブレット環境 (768px ～ 1100px):
+  2カラム構成（設定・キャンバスを並列、履歴を最下部へ配置）。
+- スマートフォン環境 (768px未満):
+  1カラム縦積み＋上部 sticky モバイルタブバー（「🎮 3D盤面」「⚙️ 対局設定」「📜 着手履歴」）。
+
+■ デフォルト設定値
+- 手番選択: 人間 先手（アクティブ表示）
+- AIの強さ: 中級（アクティブ表示）
+- コマのカラーテーマ: 黒 × 白（アクティブ表示）
+
+--------------------------------------------------------------------------------
+3. アプリケーション全ソースコード (index.html)
+--------------------------------------------------------------------------------
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>立体四目並べ - 3D 4x4x4 Connect Four</title>
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at 50% 20%, #121824 0%, #0a0c10 100%);
+      --panel-bg: rgba(255, 255, 255, 0.03);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --panel-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      --text-main: #e0e0e0;
+      --text-muted: #9ca3af;
+      --accent-color: #00f2ff;
+      --accent-glow: rgba(0, 242, 255, 0.35);
+      
+      /* Theme colors (Default: Cyan x Orange for Elegant Dark) */
+      --p1-base: #00f2ff;
+      --p1-light: #70f8ff;
+      --p1-dark: #0066ff;
+      --p1-name: "シアン (Player 1)";
+      
+      --p2-base: #ff8c00;
+      --p2-light: #ffaa44;
+      --p2-dark: #ff4500;
+      --p2-name: "橙 (Player 2 / AI)";
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    header {
+      background: rgba(10, 12, 16, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, #00f2ff, #0066ff);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 18px;
+      color: #000;
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .brand-title-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #00f2ff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    h1 span.title-white {
+      color: #ffffff;
+    }
+
+    .sub-brand {
+      font-size: 10px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-weight: 600;
+    }
+
+    .status-badge {
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      background: rgba(0, 242, 255, 0.08);
+      color: var(--accent-color);
+      border: 1px solid rgba(0, 242, 255, 0.25);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 12px rgba(0, 242, 255, 0.15);
+    }
+
+    .status-badge.win-human {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border-color: rgba(34, 197, 94, 0.4);
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
+    }
+
+    .status-badge.win-ai {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.4);
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* Main Workspace */
+    .app-container {
+      display: grid;
+      grid-template-columns: 320px 1fr 320px;
+      gap: 20px;
+      padding: 20px;
+      flex: 1;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (max-width: 1200px) {
+      .app-container {
+        grid-template-columns: 300px 1fr;
+      }
+      .history-panel {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 850px) {
+      .app-container {
+        grid-template-columns: 1fr;
+      }
+      .history-panel {
+        grid-column: span 1;
+      }
+    }
+
+    /* Panel Card */
+    .panel-card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--panel-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #00f2ff;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 10px;
+    }
+
+    /* Controls Form */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .segmented-control {
+      display: flex;
+      background: rgba(30, 41, 59, 0.4);
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .segmented-control button {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .segmented-control button.active {
+      background: #00f2ff;
+      color: #000;
+      font-weight: 800;
+      box-shadow: 0 0 12px rgba(0, 242, 255, 0.4);
+    }
+
+    /* 5-Level Difficulty Grid Control */
+    .diff-control-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      background: rgba(30, 41, 59, 0.4);
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .diff-control-grid button {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 2px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .diff-control-grid button.active {
+      background: #00f2ff;
+      color: #000;
+      font-weight: 800;
+      box-shadow: 0 0 12px rgba(0, 242, 255, 0.4);
+    }
+
+    .diff-subtag {
+      font-size: 9px;
+      font-weight: 500;
+      opacity: 0.85;
+    }
+
+    /* Custom Difficulty Panel */
+    .custom-diff-panel {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(0, 242, 255, 0.3);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-top: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 0 15px rgba(0, 242, 255, 0.1);
+    }
+
+    .custom-diff-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .custom-diff-row label {
+      font-size: 11px;
+      color: #e0e0e0;
+      font-weight: 600;
+    }
+
+    .custom-slider-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .custom-slider-group input[type="range"] {
+      width: 90px;
+      accent-color: #00f2ff;
+      cursor: pointer;
+    }
+
+    .custom-val-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: #00f2ff;
+      background: rgba(0, 242, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(0, 242, 255, 0.2);
+      min-width: 42px;
+      text-align: center;
+    }
+
+    select, input[type="text"] {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #e0e0e0;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select:focus {
+      border-color: var(--accent-color);
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+    }
+
+    /* Toggle Switch */
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.12);
+      transition: .3s;
+      border-radius: 22px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #00f2ff;
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(22px);
+      background-color: #000;
+    }
+
+    /* Reset Button */
+    .btn-reset {
+      background: #00f2ff;
+      color: #000;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      box-shadow: 0 0 15px rgba(0, 242, 255, 0.35);
+      transition: all 0.2s;
+      margin-top: 10px;
+    }
+
+    .btn-reset:hover {
+      background: #38bdf8;
+      box-shadow: 0 0 25px rgba(0, 242, 255, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn-reset:active {
+      transform: translateY(0);
+    }
+
+    /* 3D Canvas Center Stage */
+    .canvas-container {
+      position: relative;
+      background: radial-gradient(circle at center, rgba(18, 24, 36, 0.6) 0%, rgba(10, 12, 16, 0.95) 100%);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      overflow: hidden;
+      min-height: 520px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--panel-shadow);
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    canvas:active {
+      cursor: grabbing;
+    }
+
+    .canvas-overlay-hint {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 12, 16, 0.85);
+      backdrop-filter: blur(8px);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      color: var(--text-muted);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .canvas-tools {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .tool-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: rgba(10, 12, 16, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .tool-btn:hover {
+      background: rgba(0, 242, 255, 0.2);
+      border-color: var(--accent-color);
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+    }
+
+    /* Column Quick Selector (16 Columns) */
+    .quick-selector {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .col-btn {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 4px;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .col-btn:hover:not(:disabled) {
+      background: rgba(0, 242, 255, 0.15);
+      border-color: var(--accent-color);
+      box-shadow: 0 0 12px rgba(0, 242, 255, 0.25);
+    }
+
+    .col-btn:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+    }
+
+    .col-name {
+      font-weight: 700;
+      font-size: 12px;
+      color: #e0e0e0;
+    }
+
+    .col-height {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .col-score-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-top: 2px;
+    }
+
+    .score-green {
+      background: rgba(34, 197, 94, 0.2);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .score-yellow {
+      background: rgba(156, 163, 175, 0.2);
+      color: #9ca3af;
+      border: 1px solid rgba(156, 163, 175, 0.3);
+    }
+    .score-red {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Move History Log */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .history-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .history-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+    }
+
+    .history-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .turn-num {
+      font-weight: 700;
+      color: #6b7280;
+      font-size: 10px;
+      width: 26px;
+    }
+
+    .player-tag {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    .player-human-tag {
+      background: rgba(0, 242, 255, 0.15);
+      color: #00f2ff;
+      border: 1px solid rgba(0, 242, 255, 0.3);
+    }
+
+    .player-ai-tag {
+      background: rgba(255, 140, 0, 0.15);
+      color: #ff8c00;
+      border: 1px solid rgba(255, 140, 0, 0.3);
+    }
+
+    .move-pos {
+      font-weight: 600;
+      color: #e0e0e0;
+    }
+
+    .eval-badge {
+      font-weight: 700;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* Evaluation Gauge Bar (形勢メーター) */
+    .eval-gauge-card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      box-shadow: var(--panel-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .eval-gauge-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .eval-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #00f2ff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .eval-status-text {
+      font-size: 12px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+
+    .eval-bar-wrapper {
+      height: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+    }
+
+    .eval-bar-human {
+      height: 100%;
+      background: linear-gradient(90deg, #00c6ff, #00f2ff);
+      transition: width 0.4s ease;
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+    }
+
+    .eval-bar-ai {
+      height: 100%;
+      background: linear-gradient(90deg, #ff8c00, #f59e0b);
+      transition: width 0.4s ease;
+      box-shadow: 0 0 10px rgba(255, 140, 0, 0.5);
+    }
+
+    .eval-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .eval-label-human {
+      color: #00f2ff;
+    }
+
+    .eval-label-ai {
+      color: #ff8c00;
+    }
+
+    /* Teaching Mode Legend */
+    .coaching-banner {
+      background: rgba(0, 242, 255, 0.1);
+      border: 1px solid rgba(0, 242, 255, 0.3);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      color: #00f2ff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  
+    /* Mobile Navigation Tabs (< 768px) */
+    .mobile-tab-bar {
+      display: none;
+      background: rgba(10, 12, 16, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--panel-border);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: 6px 12px;
+      gap: 6px;
+    }
+
+    .mobile-tab-btn {
+      flex: 1;
+      padding: 10px 4px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .mobile-tab-btn.active {
+      background: rgba(0, 242, 255, 0.15);
+      color: #00f2ff;
+      border-color: #00f2ff;
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.25);
+    }
+
+    .canvas-stage-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    canvas {
+      touch-action: none;
+    }
+
+    /* Enhanced Responsive Breakpoints for Mobile, Tablet, PC */
+    @media (max-width: 1100px) {
+      .app-container {
+        grid-template-columns: 320px 1fr;
+        gap: 16px;
+        padding: 16px;
+      }
+      .history-panel {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 10px 14px;
+      }
+      .brand-title-group h1 {
+        font-size: 15px;
+      }
+      .sub-brand {
+        font-size: 9px;
+      }
+      .status-badge {
+        padding: 6px 10px;
+        font-size: 11px;
+      }
+
+      .mobile-tab-bar {
+        display: flex;
+      }
+
+      .app-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 10px;
+      }
+
+      /* Responsive Tab Visibility on Mobile */
+      .tab-hidden-mobile {
+        display: none !important;
+      }
+
+      .canvas-container {
+        min-height: 280px;
+        height: 48vh;
+        max-height: 460px;
+      }
+
+      .quick-selector {
+        gap: 6px;
+      }
+
+      .col-btn {
+        padding: 10px 2px;
+        min-height: 46px;
+      }
+
+      .col-name {
+        font-size: 13px;
+      }
+      .col-height {
+        font-size: 10px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .brand-title-group h1 {
+        font-size: 13px;
+      }
+      .sub-brand {
+        display: none;
+      }
+      .canvas-container {
+        height: 42vh;
+        min-height: 250px;
+      }
+      .diff-control-grid button {
+        padding: 8px 1px;
+        font-size: 10px;
+      }
+    }
+
+    .doc-download-btn {
+      display: none; /* Hidden by default, shown via JS if on dev URL */
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #00f2ff;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      margin-left: 10px;
+    }
+
+    .doc-download-btn:hover {
+      background: rgba(0, 242, 255, 0.15);
+      border-color: #00f2ff;
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+      color: #ffffff;
+    }
+
+    @media (max-width: 600px) {
+      .doc-download-btn span {
+        display: none;
+      }
+      .doc-download-btn {
+        padding: 6px 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">4³</div>
+      <div class="brand-title-group">
+        <h1>立体四目並べ <span class="title-white">3D</span></h1>
+        <div class="sub-brand">3D 空間戦略対局マトリクス</div>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <a id="docDownloadBtn" href="/developer_docs.txt" download="立体四目並べ3D_開発者ドキュメント.txt" class="doc-download-btn" title="開発者ドキュメント(.txt)をダウンロード">
+        📄 <span>仕様書(.txt)</span>
+      </a>
+      <div class="status-badge" id="statusBadge">
+        <div class="status-dot"></div>
+        <span id="statusText">ゲーム開始</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Tab Navigation (< 768px) -->
+  <div class="mobile-tab-bar" id="mobileTabBar">
+    <button class="mobile-tab-btn active" id="tabBtnStage" onclick="switchMobileTab('stage')">
+      🎮 3D盤面
+    </button>
+    <button class="mobile-tab-btn" id="tabBtnSettings" onclick="switchMobileTab('settings')">
+      ⚙️ 対戦設定
+    </button>
+    <button class="mobile-tab-btn" id="tabBtnHistory" onclick="switchMobileTab('history')">
+      📜 着手履歴
+    </button>
+  </div>
+
+
+  <div class="app-container">
+    
+    <!-- Left Column: Settings Panel -->
+    <div class="panel-card" id="panelSettings">
+      <div class="panel-title">
+        ⚙️ 対戦・ゲーム設定
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">手番選択</label>
+        <div class="segmented-control">
+          <button type="button" id="btnHumanFirst" class="active" onclick="setOrder(1)">人間 先手</button>
+          <button type="button" id="btnAIFirst" onclick="setOrder(2)">人間 後手</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">AIの強さ（思考レベル）</label>
+        <div class="diff-control-grid">
+          <button type="button" id="btnLevelEasy" onclick="setDifficulty('easy')">初級</button>
+          <button type="button" id="btnLevelMedium" class="active" onclick="setDifficulty('medium')">中級</button>
+          <button type="button" id="btnLevelHard" onclick="setDifficulty('hard')">上級</button>
+          <button type="button" id="btnLevelMaster" onclick="setDifficulty('master')">マスター</button>
+          <button type="button" id="btnLevelCustom" onclick="setDifficulty('custom')">任意設定</button>
+        </div>
+
+        <!-- Custom Settings Sub-panel -->
+        <div id="customDiffPanel" class="custom-diff-panel" style="display: none;">
+          <div class="custom-diff-row">
+            <label>先読み手数</label>
+            <div class="custom-slider-group">
+              <input type="range" id="customDepthSlider" min="4" max="12" step="1" value="8" oninput="updateCustomSettings()">
+              <span id="customDepthBadge" class="custom-val-badge">8手</span>
+            </div>
+          </div>
+          <div class="custom-diff-row">
+            <label>思考時間上限</label>
+            <div class="custom-slider-group">
+              <input type="range" id="customTimeSlider" min="0.5" max="5.0" step="0.5" value="2.0" oninput="updateCustomSettings()">
+              <span id="customTimeBadge" class="custom-val-badge">2.0秒</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="toggle-row">
+          <div>
+            <div class="form-label" style="color:#fff; font-size:14px; font-weight:600;">指導モード (アシスト)</div>
+            <div class="form-label">全列の評価値をリアルタイム表示</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="coachingToggle" onchange="toggleCoaching(this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">コマのカラーテーマ</label>
+        <select id="themeSelect" onchange="changeTheme(this.value)">
+          <option value="black-white" selected>黒 × 白 (Black × White)</option>
+          <option value="cyan-orange">シアン × 橙 (Cyan × Orange)</option>
+          <option value="red-yellow">赤 × 黄 (Red × Yellow)</option>
+          <option value="red-blue">赤 × 青 (Red × Blue)</option>
+          <option value="purple-gold">紫 × 金 (Purple × Gold)</option>
+        </select>
+      </div>
+
+      <button type="button" class="btn-reset" onclick="resetGame()">🔄 ゲームリセット</button>
+
+      <div class="panel-title" style="margin-top: 10px;">
+        🎯 支柱クイック選択
+      </div>
+      <div class="quick-selector" id="quickSelector">
+        <!-- 16 column buttons will be rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- Center Column: 3D Canvas Stage -->
+    <div class="canvas-stage-wrapper" id="panelStage">
+
+      <!-- 形勢 (勝率予測) ゲージカード -->
+      <div class="eval-gauge-card" id="evalGaugeCard">
+        <div class="eval-gauge-header">
+          <div class="eval-title">📊 局面形勢 (勝率予測)</div>
+          <div class="eval-status-text" id="evalStatusText">50% vs 50% (互角)</div>
+        </div>
+        <div class="eval-bar-wrapper">
+          <div class="eval-bar-human" id="evalBarHuman" style="width: 50%;"></div>
+          <div class="eval-bar-ai" id="evalBarAi" style="width: 50%;"></div>
+        </div>
+        <div class="eval-labels">
+          <span class="eval-label-human" id="evalLabelHuman">👤 人間 50%</span>
+          <span class="eval-label-ai" id="evalLabelAi">🤖 AI 50%</span>
+        </div>
+      </div>
+
+      <div class="canvas-container">
+      <canvas id="gameCanvas"></canvas>
+      <div class="canvas-tools">
+        <button class="tool-btn" onclick="resetCamera()" title="視点をリセット">↺</button>
+        <button class="tool-btn" onclick="zoomCamera(0.9)" title="拡大">+</button>
+        <button class="tool-btn" onclick="zoomCamera(1.1)" title="縮小">-</button>
+      </div>
+      <div class="canvas-overlay-hint">
+        ドラッグで3D視点回転 / ホイールで拡大縮小 / 支柱クリックで着手
+      </div>
+    </div>
+
+    <!-- Right Column: History & Stats -->
+    <div class="panel-card history-panel" id="panelHistory">
+      <div class="panel-title">
+        📜 着手履歴 / 評価ログ
+      </div>
+      <div class="history-list" id="historyList">
+        <!-- History items will be dynamically inserted here -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------
+    // 1. Constants & Victory Lines Cache (76 lines) & Zobrist Hash
+    // -------------------------------------------------------------
+    const WINNING_LINES = [];
+    const CELL_LINE_COUNTS = new Uint8Array(64);
+    const ZOBRIST_TABLE = new Uint32Array(64 * 2);
+
+    function initZobrist() {
+      // Seeded random pseudo-number generator for deterministic Zobrist keys
+      let seed = 0x12345678;
+      for (let i = 0; i < 64 * 2; i++) {
+        seed = (seed ^ (seed << 13)) >>> 0;
+        seed = (seed ^ (seed >>> 17)) >>> 0;
+        seed = (seed ^ (seed << 5)) >>> 0;
+        ZOBRIST_TABLE[i] = seed;
+      }
+    }
+    initZobrist();
+
+    function computeZobristHash(b) {
+      let h = 0;
+      for (let i = 0; i < 64; i++) {
+        const val = b[i];
+        if (val === 1) h = (h ^ ZOBRIST_TABLE[i * 2]) >>> 0;
+        else if (val === 2) h = (h ^ ZOBRIST_TABLE[i * 2 + 1]) >>> 0;
+      }
+      return h;
+    }
+
+    // Transposition Table & Search Heuristics
+    const transpositionTable = new Map();
+    const killerMoves = Array.from({ length: 20 }, () => [-1, -1]);
+    const historyTable = new Int32Array(16);
+
+    function clearSearchCaches() {
+      transpositionTable.clear();
+      for (let i = 0; i < 20; i++) {
+        killerMoves[i][0] = -1;
+        killerMoves[i][1] = -1;
+      }
+      historyTable.fill(0);
+    }
+
+    function initWinningLines() {
+      WINNING_LINES.length = 0;
+      CELL_LINE_COUNTS.fill(0);
+      const getIdx = (x, y, z) => x + y * 4 + z * 16;
+
+      // 1. X direction (16 lines)
+      for (let y = 0; y < 4; y++) {
+        for (let z = 0; z < 4; z++) {
+          WINNING_LINES.push([getIdx(0, y, z), getIdx(1, y, z), getIdx(2, y, z), getIdx(3, y, z)]);
+        }
+      }
+      // 2. Y direction (16 lines)
+      for (let x = 0; x < 4; x++) {
+        for (let z = 0; z < 4; z++) {
+          WINNING_LINES.push([getIdx(x, 0, z), getIdx(x, 1, z), getIdx(x, 2, z), getIdx(x, 3, z)]);
+        }
+      }
+      // 3. Z direction (16 lines)
+      for (let x = 0; x < 4; x++) {
+        for (let y = 0; y < 4; y++) {
+          WINNING_LINES.push([getIdx(x, y, 0), getIdx(x, y, 1), getIdx(x, y, 2), getIdx(x, y, 3)]);
+        }
+      }
+      // 4. XY plane diagonals (8 lines)
+      for (let z = 0; z < 4; z++) {
+        WINNING_LINES.push([getIdx(0, 0, z), getIdx(1, 1, z), getIdx(2, 2, z), getIdx(3, 3, z)]);
+        WINNING_LINES.push([getIdx(3, 0, z), getIdx(2, 1, z), getIdx(1, 2, z), getIdx(0, 3, z)]);
+      }
+      // 5. XZ plane diagonals (8 lines)
+      for (let y = 0; y < 4; y++) {
+        WINNING_LINES.push([getIdx(0, y, 0), getIdx(1, y, 1), getIdx(2, y, 2), getIdx(3, y, 3)]);
+        WINNING_LINES.push([getIdx(3, y, 0), getIdx(2, y, 1), getIdx(1, y, 2), getIdx(0, y, 3)]);
+      }
+      // 6. YZ plane diagonals (8 lines)
+      for (let x = 0; x < 4; x++) {
+        WINNING_LINES.push([getIdx(x, 0, 0), getIdx(x, 1, 1), getIdx(x, 2, 2), getIdx(x, 3, 3)]);
+        WINNING_LINES.push([getIdx(x, 3, 0), getIdx(x, 2, 1), getIdx(x, 1, 2), getIdx(0, 3, 3)]);
+      }
+      // 7. Space 3D diagonals (4 lines)
+      WINNING_LINES.push([getIdx(0, 0, 0), getIdx(1, 1, 1), getIdx(2, 2, 2), getIdx(3, 3, 3)]);
+      WINNING_LINES.push([getIdx(3, 0, 0), getIdx(2, 1, 1), getIdx(1, 2, 2), getIdx(0, 3, 3)]);
+      WINNING_LINES.push([getIdx(0, 3, 0), getIdx(1, 2, 1), getIdx(2, 1, 2), getIdx(3, 0, 3)]);
+      WINNING_LINES.push([getIdx(3, 3, 0), getIdx(2, 2, 1), getIdx(1, 1, 2), getIdx(0, 0, 3)]);
+
+      // Precalculate number of winning lines passing through each cell
+      for (let i = 0; i < WINNING_LINES.length; i++) {
+        const line = WINNING_LINES[i];
+        for (let j = 0; j < 4; j++) {
+          CELL_LINE_COUNTS[line[j]]++;
+        }
+      }
+    }
+
+    initWinningLines();
+
+    // Opening Book for 3D Connect Four Center Control
+    const OPENING_CENTER_COLS = [5, 6, 9, 10]; // Center 2x2 columns B2, B3, C2, C3
+
+    function getOpeningBookMove(b, h) {
+      const placed = history.length;
+      if (placed >= 4) return -1; // Only for first 4 moves
+
+      // Check available center columns
+      const openCenters = OPENING_CENTER_COLS.filter(col => h[col] < 4);
+      if (openCenters.length === 0) return -1;
+
+      // Pick center column with highest strategic value or random among top center cols
+      openCenters.sort((a, b) => {
+        const xA = a % 4, yA = Math.floor(a / 4);
+        const xB = b % 4, yB = Math.floor(b / 4);
+        return (Math.abs(xA - 1.5) + Math.abs(yA - 1.5)) - (Math.abs(xB - 1.5) + Math.abs(yB - 1.5));
+      });
+      return openCenters[0];
+    }
+
+    // Column names: A1 to D4
+    const COL_NAMES = [];
+    for (let y = 0; y < 4; y++) {
+      const rowChar = String.fromCharCode(65 + y); // 'A', 'B', 'C', 'D'
+      for (let x = 0; x < 4; x++) {
+        COL_NAMES.push(`${rowChar}${x + 1}`);
+      }
+    }
+
+    // Color themes setup
+    const COLOR_THEMES = {
+      'red-yellow': {
+        p1: { base: '#ef4444', light: '#f87171', dark: '#991b1b', name: '赤' },
+        p2: { base: '#f59e0b', light: '#fbbf24', dark: '#b45309', name: '黄' }
+      },
+      'red-blue': {
+        p1: { base: '#ef4444', light: '#f87171', dark: '#991b1b', name: '赤' },
+        p2: { base: '#3b82f6', light: '#60a5fa', dark: '#1d4ed8', name: '青' }
+      },
+      'black-white': {
+        p1: { base: '#3b3f46', light: '#cbd5e1', dark: '#111827', name: '黒' },
+        p2: { base: '#f1f5f9', light: '#ffffff', dark: '#94a3b8', name: '白' }
+      },
+      'cyan-orange': {
+        p1: { base: '#00f2ff', light: '#70f8ff', dark: '#0066ff', name: 'シアン' },
+        p2: { base: '#ff8c00', light: '#ffaa44', dark: '#ff4500', name: '橙' }
+      },
+      'purple-gold': {
+        p1: { base: '#a855f7', light: '#c084fc', dark: '#7e22ce', name: '紫' },
+        p2: { base: '#eab308', light: '#fde047', dark: '#a16207', name: '金' }
+      }
+    };
+
+    // -------------------------------------------------------------
+    // 2. Global State Variables
+    // -------------------------------------------------------------
+    let board = new Array(64).fill(0); // 0: empty, 1: P1, 2: P2
+    let heights = new Array(16).fill(0); // height level 0..4 for each col 0..15
+    let currentTurn = 1; // 1 or 2
+    let humanPlayer = 1; // 1 (First) or 2 (Second)
+    let aiPlayer = 2;
+    let difficulty = 'medium'; // 'easy', 'medium', 'hard', 'master', 'custom'
+    let customDepth = 8;
+    let customTimeLimitSec = 2.0;
+    let coachingMode = false;
+    let currentThemeKey = 'black-white';
+    
+    let isGameOver = false;
+    let winningLine = null;
+    let history = []; // list of { turn, player, col, score, x, y, z }
+    let coachingScores = new Array(16).fill(null);
+    let isAiThinking = false;
+
+    // Camera 3D variables
+    let cameraAngleX = 0.5; // Pitch
+    let cameraAngleY = 0.78; // Yaw
+    let cameraDistance = 380; // Distance Zoom
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
+    let hoveredCol = -1;
+
+    // -------------------------------------------------------------
+    // 3. AI & Advanced Evaluation Engine (0 ~ 9999 Score Scale)
+    // -------------------------------------------------------------
+    function evaluateBoard(b, h, evalPlayer) {
+      const oppPlayer = evalPlayer === 1 ? 2 : 1;
+      let score = 0;
+
+      let pImmediateThreats = 0;
+      let oImmediateThreats = 0;
+
+      let pTieredThreats = 0;
+      let oTieredThreats = 0;
+
+      // 1. Precise 76 Line Pattern & Reachable Threat Evaluation
+      for (let i = 0; i < 76; i++) {
+        const line = WINNING_LINES[i];
+        let pCount = 0;
+        let oCount = 0;
+        let emptyIdx = -1;
+
+        for (let j = 0; j < 4; j++) {
+          const val = b[line[j]];
+          if (val === evalPlayer) pCount++;
+          else if (val === oppPlayer) oCount++;
+          else emptyIdx = line[j];
+        }
+
+        if (pCount > 0 && oCount > 0) continue; // Blocked line
+
+        if (pCount === 4) return 9999;  // 【自分の4並び（絶対勝利）】
+        if (oCount === 4) return -9999; // 【相手の4並び（絶対敗北）】
+
+        if (pCount === 3) {
+          const col = emptyIdx % 16;
+          const z = Math.floor(emptyIdx / 16);
+          if (h && h[col] === z) {
+            pImmediateThreats++;
+            score += 450;
+          } else if (h && h[col] < z) {
+            // Tiered threat (requires stacking below)
+            pTieredThreats++;
+            score += 150;
+          } else {
+            score += 300;
+          }
+        } else if (pCount === 2) {
+          score += 40;
+        } else if (pCount === 1) {
+          score += 6;
+        }
+
+        if (oCount === 3) {
+          const col = emptyIdx % 16;
+          const z = Math.floor(emptyIdx / 16);
+          if (h && h[col] === z) {
+            oImmediateThreats++;
+            score -= 650;
+          } else if (h && h[col] < z) {
+            oTieredThreats++;
+            score -= 220;
+          } else {
+            score -= 400;
+          }
+        } else if (oCount === 2) {
+          score -= 60;
+        } else if (oCount === 1) {
+          score -= 10;
+        }
+      }
+
+      // 2. Dominant Pattern Knowledge Base: Double Threat & Tiered Fork Detection
+      if (pImmediateThreats >= 2) return 8800;  // 自陣の2箇所同時王手（必勝）
+      if (oImmediateThreats >= 2) return -8800; // 敵陣の2箇所同時王手（必敗）
+
+      if (pImmediateThreats === 1 && pTieredThreats >= 1) score += 800;  // 1手即時王手 + Tieredトラップ
+      if (oImmediateThreats === 1 && oTieredThreats >= 1) score -= 1200; // 相手の1手即時王手 + Tieredトラップ
+
+      // 3. Center Dominance & 3D Interlock Geometry Bonus
+      for (let idx = 0; idx < 64; idx++) {
+        const val = b[idx];
+        if (val === 0) continue;
+
+        const x = idx % 4;
+        const y = Math.floor(idx / 4) % 4;
+        const z = Math.floor(idx / 16);
+
+        // 3D Core Central Cube (1,1,1) to (2,2,2) receives maximum interlock bonus
+        const isCore3D = (x === 1 || x === 2) && (y === 1 || y === 2) && (z === 1 || z === 2);
+        const centerProx = (1.5 - Math.abs(x - 1.5)) + (1.5 - Math.abs(y - 1.5)) + (1.5 - Math.abs(z - 1.5));
+        const totalPositionalValue = CELL_LINE_COUNTS[idx] * 2 + Math.round(centerProx * 3) + (isCore3D ? 12 : 0);
+
+        if (val === evalPlayer) {
+          score += totalPositionalValue;
+        } else {
+          score -= totalPositionalValue;
+        }
+      }
+
+      // Clamp non-terminal heuristic score strictly within -8500 to +8500
+      return Math.max(-8500, Math.min(8500, Math.round(score)));
+    }
+
+    function checkWin(b) {
+      for (let i = 0; i < 76; i++) {
+        const line = WINNING_LINES[i];
+        const val = b[line[0]];
+        if (val !== 0 && val === b[line[1]] && val === b[line[2]] && val === b[line[3]]) {
+          return { winner: val, line: line };
+        }
+      }
+      return null;
+    }
+
+    // Move Ordering with TT Best Move & Killer / History Heuristic
+    function getSortedValidMoves(b, h, playerToMove, ttBestMove = -1, searchDepth = 0) {
+      const validCols = [];
+      for (let c = 0; c < 16; c++) {
+        if (h[c] < 4) validCols.push(c);
+      }
+      if (validCols.length === 0) return [];
+
+      const currentKillers = (searchDepth < 20) ? killerMoves[searchDepth] : [-1, -1];
+
+      const moveScores = validCols.map(col => {
+        let score = 0;
+
+        // 1. TT Best Move gets highest priority
+        if (col === ttBestMove) {
+          return { col, score: 20000 };
+        }
+
+        // 2. Killer moves priority
+        if (col === currentKillers[0]) score += 8000;
+        else if (col === currentKillers[1]) score += 6000;
+
+        // 3. History heuristic priority
+        score += historyTable[col];
+
+        // 4. Quick positional & tactical static evaluation
+        const z = h[col];
+        const idx = col + z * 16;
+
+        b[idx] = playerToMove;
+        h[col]++;
+
+        const win = checkWin(b);
+        if (win && win.winner === playerToMove) {
+          score += 15000;
+        } else {
+          score += evaluateBoard(b, h, playerToMove);
+        }
+
+        b[idx] = 0;
+        h[col]--;
+
+        return { col, score };
+      });
+
+      // Sort moves in descending order
+      moveScores.sort((a, b) => b.score - a.score);
+      return moveScores.map(m => m.col);
+    }
+
+    // Quiescence Search (静的静穏探索)
+    function quiescenceSearch(b, h, alpha, beta, isMaximizing, evalAiPlayer, evalHumanPlayer, depthLimit = 2) {
+      const standPat = evaluateBoard(b, h, evalAiPlayer);
+      if (depthLimit <= 0) return standPat;
+
+      if (isMaximizing) {
+        if (standPat >= beta) return beta;
+        alpha = Math.max(alpha, standPat);
+      } else {
+        if (standPat <= alpha) return alpha;
+        beta = Math.min(beta, standPat);
+      }
+
+      const activePlayer = isMaximizing ? evalAiPlayer : evalHumanPlayer;
+      const oppPlayer = isMaximizing ? evalHumanPlayer : evalAiPlayer;
+
+      const validCols = [];
+      for (let c = 0; c < 16; c++) {
+        if (h[c] < 4) validCols.push(c);
+      }
+
+      // Find tactical threat moves (immediate 4-in-a-row wins or forced blocks)
+      const tacticalCols = [];
+      for (let col of validCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+
+        // Win check for active player
+        b[idx] = activePlayer;
+        const winAct = checkWin(b);
+        b[idx] = 0;
+        if (winAct) {
+          return isMaximizing ? 9999 : -9999;
+        }
+
+        // Win check for opponent (block)
+        b[idx] = oppPlayer;
+        const winOpp = checkWin(b);
+        b[idx] = 0;
+        if (winOpp) {
+          tacticalCols.push(col);
+        }
+      }
+
+      if (tacticalCols.length === 0) {
+        return standPat;
+      }
+
+      for (let col of tacticalCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+        b[idx] = activePlayer;
+        h[col]++;
+
+        const score = quiescenceSearch(b, h, alpha, beta, !isMaximizing, evalAiPlayer, evalHumanPlayer, depthLimit - 1);
+
+        b[idx] = 0;
+        h[col]--;
+
+        if (isMaximizing) {
+          if (score >= beta) return beta;
+          alpha = Math.max(alpha, score);
+        } else {
+          if (score <= alpha) return alpha;
+          beta = Math.min(beta, score);
+        }
+      }
+
+      return isMaximizing ? alpha : beta;
+    }
+
+    function minimax(b, h, depth, alpha, beta, isMaximizing, evalAiPlayer, evalHumanPlayer, deadlineMs = null, currentPly = 0) {
+      if (deadlineMs && Date.now() > deadlineMs) {
+        return { score: evaluateBoard(b, h, evalAiPlayer), move: -1, aborted: true };
+      }
+
+      const winState = checkWin(b);
+      if (winState) {
+        if (winState.winner === evalAiPlayer) return { score: 9999 - currentPly, move: -1 };
+        if (winState.winner === evalHumanPlayer) return { score: -9999 + currentPly, move: -1 };
+      }
+
+      if (depth <= 0) {
+        // Apply Quiescence Search for quiet tactical stability
+        const qScore = quiescenceSearch(b, h, alpha, beta, isMaximizing, evalAiPlayer, evalHumanPlayer, 2);
+        return { score: qScore, move: -1 };
+      }
+
+      // Transposition Table Lookup
+      const boardHash = computeZobristHash(b);
+      const ttEntry = transpositionTable.get(boardHash);
+      let ttBestMove = -1;
+
+      if (ttEntry) {
+        ttBestMove = ttEntry.move;
+        if (ttEntry.depth >= depth) {
+          if (ttEntry.flag === 'EXACT') {
+            return { score: ttEntry.score, move: ttEntry.move };
+          } else if (ttEntry.flag === 'LOWER' && ttEntry.score >= beta) {
+            return { score: ttEntry.score, move: ttEntry.move };
+          } else if (ttEntry.flag === 'UPPER' && ttEntry.score <= alpha) {
+            return { score: ttEntry.score, move: ttEntry.move };
+          }
+        }
+      }
+
+      const activePlayer = isMaximizing ? evalAiPlayer : evalHumanPlayer;
+      const oppPlayer = isMaximizing ? evalHumanPlayer : evalAiPlayer;
+
+      const validCols = [];
+      for (let c = 0; c < 16; c++) {
+        if (h[c] < 4) validCols.push(c);
+      }
+      if (validCols.length === 0) {
+        return { score: evaluateBoard(b, h, evalAiPlayer), move: -1 };
+      }
+
+      // 1. Immediate Win Check for active player
+      for (let col of validCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+        b[idx] = activePlayer;
+        const isWin = checkWin(b);
+        b[idx] = 0;
+        if (isWin) {
+          return { score: isMaximizing ? (9999 - currentPly) : (-9999 + currentPly), move: col };
+        }
+      }
+
+      // 2. Forced Block Check for opponent threats
+      const forcedBlocks = [];
+      for (let col of validCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+        b[idx] = oppPlayer;
+        const isOppWin = checkWin(b);
+        b[idx] = 0;
+        if (isOppWin) {
+          forcedBlocks.push(col);
+        }
+      }
+
+      let moves = [];
+      let isForced = false;
+      if (forcedBlocks.length > 0) {
+        if (forcedBlocks.length >= 2) {
+          // Opponent has double threat -> Unblockable
+          return { score: isMaximizing ? (-9999 + currentPly) : (9999 - currentPly), move: forcedBlocks[0] };
+        }
+        moves = forcedBlocks;
+        isForced = true;
+      } else {
+        moves = getSortedValidMoves(b, h, activePlayer, ttBestMove, currentPly);
+      }
+
+      let bestMove = moves[0];
+      const depthDec = isForced ? 0.5 : 1.0;
+      const origAlpha = alpha;
+
+      if (isMaximizing) {
+        let maxEval = -Infinity;
+        for (let i = 0; i < moves.length; i++) {
+          if (deadlineMs && Date.now() > deadlineMs && i > 0) {
+            return { score: maxEval, move: bestMove, aborted: true };
+          }
+          const col = moves[i];
+          const z = h[col];
+          const idx = col + z * 16;
+
+          b[idx] = evalAiPlayer;
+          h[col]++;
+
+          const result = minimax(b, h, depth - depthDec, alpha, beta, false, evalAiPlayer, evalHumanPlayer, deadlineMs, currentPly + 1);
+
+          b[idx] = 0;
+          h[col]--;
+
+          if (result.aborted && i > 0) {
+            return { score: maxEval, move: bestMove, aborted: true };
+          }
+
+          if (result.score > maxEval) {
+            maxEval = result.score;
+            bestMove = col;
+          }
+          alpha = Math.max(alpha, result.score);
+          if (beta <= alpha) {
+            // Update Killer Moves & History Heuristic on Cutoff
+            if (currentPly < 20 && col !== killerMoves[currentPly][0]) {
+              killerMoves[currentPly][1] = killerMoves[currentPly][0];
+              killerMoves[currentPly][0] = col;
+            }
+            historyTable[col] += depth * depth;
+            break; // Alpha-Beta Cutoff
+          }
+        }
+
+        // Store into Transposition Table
+        let flag = 'EXACT';
+        if (maxEval <= origAlpha) flag = 'UPPER';
+        else if (maxEval >= beta) flag = 'LOWER';
+        transpositionTable.set(boardHash, { depth, score: maxEval, flag, move: bestMove });
+
+        return { score: maxEval, move: bestMove };
+      } else {
+        let minEval = Infinity;
+        for (let i = 0; i < moves.length; i++) {
+          if (deadlineMs && Date.now() > deadlineMs && i > 0) {
+            return { score: minEval, move: bestMove, aborted: true };
+          }
+          const col = moves[i];
+          const z = h[col];
+          const idx = col + z * 16;
+
+          b[idx] = evalHumanPlayer;
+          h[col]++;
+
+          const result = minimax(b, h, depth - depthDec, alpha, beta, true, evalAiPlayer, evalHumanPlayer, deadlineMs, currentPly + 1);
+
+          b[idx] = 0;
+          h[col]--;
+
+          if (result.aborted && i > 0) {
+            return { score: minEval, move: bestMove, aborted: true };
+          }
+
+          if (result.score < minEval) {
+            minEval = result.score;
+            bestMove = col;
+          }
+          beta = Math.min(beta, result.score);
+          if (beta <= alpha) {
+            // Update Killer Moves & History Heuristic on Cutoff
+            if (currentPly < 20 && col !== killerMoves[currentPly][0]) {
+              killerMoves[currentPly][1] = killerMoves[currentPly][0];
+              killerMoves[currentPly][0] = col;
+            }
+            historyTable[col] += depth * depth;
+            break; // Alpha-Beta Cutoff
+          }
+        }
+
+        // Store into Transposition Table
+        let flag = 'EXACT';
+        if (minEval <= origAlpha) flag = 'UPPER';
+        else if (minEval >= beta) flag = 'LOWER';
+        transpositionTable.set(boardHash, { depth, score: minEval, flag, move: bestMove });
+
+        return { score: minEval, move: bestMove };
+      }
+    }
+
+    // Iterative Deepening Minimax Search Engine
+    function getBestMoveIterative(b, h, targetMaxDepth, maxTimeMs, evalAiPlayer, evalHumanPlayer) {
+      clearSearchCaches(); // Reset TT, Killer Moves, and History Table per search
+
+      // 1. Opening Book Check
+      const bookMove = getOpeningBookMove(b, h);
+      if (bookMove !== -1) {
+        return { move: bookMove, score: 500 };
+      }
+
+      const startTime = Date.now();
+      const deadlineMs = startTime + maxTimeMs;
+
+      const validCols = [];
+      for (let c = 0; c < 16; c++) {
+        if (h[c] < 4) validCols.push(c);
+      }
+      if (validCols.length === 0) return { move: -1, score: 0 };
+      if (validCols.length === 1) return { move: validCols[0], score: 0 };
+
+      // 2. Immediate Win Check for AI
+      for (let col of validCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+        b[idx] = evalAiPlayer;
+        const isWin = checkWin(b);
+        b[idx] = 0;
+        if (isWin) return { move: col, score: 9999 };
+      }
+
+      // 3. Prevent Opponent Win (Forced Block)
+      const forcedBlocks = [];
+      for (let col of validCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+        b[idx] = evalHumanPlayer;
+        const isWin = checkWin(b);
+        b[idx] = 0;
+        if (isWin) forcedBlocks.push(col);
+      }
+
+      if (forcedBlocks.length === 1) {
+        return { move: forcedBlocks[0], score: -500 };
+      } else if (forcedBlocks.length >= 2) {
+        return { move: forcedBlocks[0], score: -9999 };
+      }
+
+      // 4. Iterative Deepening Search
+      let bestMove = validCols[0];
+      let bestScore = -Infinity;
+
+      for (let currentDepth = 2; currentDepth <= targetMaxDepth; currentDepth++) {
+        if (Date.now() >= deadlineMs && currentDepth > 3) break;
+
+        const result = minimax(b, h, currentDepth, -Infinity, Infinity, true, evalAiPlayer, evalHumanPlayer, deadlineMs, 0);
+
+        if (result.aborted && bestMove !== -1) {
+          break;
+        }
+
+        bestMove = result.move;
+        bestScore = result.score;
+
+        if (Math.abs(bestScore) >= 9000) break;
+      }
+
+      return { move: bestMove, score: bestScore };
+    }
+
+    // AI Move trigger
+    function makeAiMove() {
+      if (isGameOver || isAiThinking) return;
+      isAiThinking = true;
+      updateStatusDisplay();
+
+      setTimeout(() => {
+        const validMoves = [];
+        for (let c = 0; c < 16; c++) {
+          if (heights[c] < 4) validMoves.push(c);
+        }
+
+        if (validMoves.length === 0) {
+          isAiThinking = false;
+          return;
+        }
+
+        let chosenMove = -1;
+        let moveScore = null;
+
+        let targetDepth = 5;
+        let timeLimitMs = 1500;
+
+        if (difficulty === 'easy') {
+          targetDepth = 3;
+          timeLimitMs = 1000;
+        } else if (difficulty === 'medium') {
+          targetDepth = 5;
+          timeLimitMs = 1500;
+        } else if (difficulty === 'hard') {
+          targetDepth = 7;
+          timeLimitMs = 2000;
+        } else if (difficulty === 'master') {
+          const filled = heights.reduce((a, b) => a + b, 0);
+          if (filled < 20) targetDepth = 8;
+          else if (filled < 36) targetDepth = 10;
+          else targetDepth = 12;
+          timeLimitMs = 2500;
+        } else if (difficulty === 'custom') {
+          targetDepth = customDepth;
+          timeLimitMs = Math.round(customTimeLimitSec * 1000);
+        }
+
+        if (difficulty === 'easy') {
+          const candidateScores = validMoves.map(col => {
+            const z = heights[col];
+            const idx = col + z * 16;
+            board[idx] = aiPlayer;
+            heights[col]++;
+            const score = evaluateBoard(board, heights, aiPlayer) + (Math.random() * 200 - 100);
+            board[idx] = 0;
+            heights[col]--;
+            return { col, score };
+          });
+          candidateScores.sort((a, b) => b.score - a.score);
+          chosenMove = candidateScores[0].col;
+        } else {
+          const searchRes = getBestMoveIterative(board, heights, targetDepth, timeLimitMs, aiPlayer, humanPlayer);
+          chosenMove = searchRes.move;
+          moveScore = searchRes.score;
+        }
+
+        if (chosenMove === -1 || heights[chosenMove] >= 4) {
+          chosenMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+        }
+
+        isAiThinking = false;
+
+        if (chosenMove !== -1) {
+          if (moveScore === null) {
+            moveScore = evaluateBoard(board, heights, aiPlayer);
+          }
+          executeMove(chosenMove, moveScore);
+        }
+      }, 80);
+    }
+
+    // Calculate Coaching Scores for Human Player in Assist Mode (Strict 0 ~ 9999 Scale)
+    function computeCoachingScores() {
+      coachingScores.fill(null);
+      if (!coachingMode || currentTurn !== humanPlayer || isGameOver) return;
+
+      const validMoves = [];
+      for (let c = 0; c < 16; c++) {
+        if (heights[c] < 4) validMoves.push(c);
+      }
+      if (validMoves.length === 0) return;
+
+      // Determine search depth for coaching assist
+      let searchDepth = 5;
+      if (difficulty === 'easy') searchDepth = 3;
+      else if (difficulty === 'medium') searchDepth = 5;
+      else if (difficulty === 'hard') searchDepth = 7;
+      else if (difficulty === 'master') searchDepth = 8;
+      else if (difficulty === 'custom') searchDepth = Math.min(customDepth, 9);
+
+      // Check if AI already has immediate winning moves on current board
+      const aiWinsNow = [];
+      for (let col of validMoves) {
+        const z = heights[col];
+        const idx = col + z * 16;
+        board[idx] = aiPlayer;
+        if (checkWin(board)) {
+          aiWinsNow.push(col);
+        }
+        board[idx] = 0;
+      }
+
+      for (let col of validMoves) {
+        const z = heights[col];
+        const idx = col + z * 16;
+
+        // If AI has immediate win and human move doesn't block it -> Instant LOSE
+        if (aiWinsNow.length > 0 && !aiWinsNow.includes(col)) {
+          coachingScores[col] = -9999;
+          continue;
+        }
+        if (aiWinsNow.length > 1) {
+          coachingScores[col] = -9999; // Double threat -> unavoidable defeat
+          continue;
+        }
+
+        board[idx] = humanPlayer;
+        heights[col]++;
+
+        const winState = checkWin(board);
+        let score = 0;
+
+        if (winState && winState.winner === humanPlayer) {
+          score = 9999; // WIN
+        } else {
+          // Suicide Check: Does playing here allow AI to immediately win on top in the same column?
+          let isSuicide = false;
+          if (heights[col] < 4) {
+            const topZ = heights[col];
+            const topIdx = col + topZ * 16;
+            board[topIdx] = aiPlayer;
+            if (checkWin(board)) {
+              isSuicide = true;
+            }
+            board[topIdx] = 0;
+          }
+
+          if (isSuicide) {
+            score = -9999; // LOSE (Suicide move)
+          } else {
+            // Search from AI's perspective with iterative deepening and clean cache
+            const aiRes = getBestMoveIterative(board, heights, searchDepth, 200, aiPlayer, humanPlayer);
+            if (aiRes.score >= 8000) {
+              score = -9999; // AI forced win sequence -> LOSE
+            } else if (aiRes.score <= -8000) {
+              score = 9999;  // Human forced win sequence -> WIN
+            } else {
+              score = -aiRes.score; // Human absolute perspective
+            }
+          }
+        }
+
+        board[idx] = 0;
+        heights[col]--;
+
+        // Clamp score strictly between -9999 and +9999
+        if (score < -9000) score = -9999;
+        else if (score > 9000) score = 9999;
+        else score = Math.max(-8999, Math.min(8999, Math.round(score)));
+
+        coachingScores[col] = score;
+      }
+    }
+
+    // Update Game Situation Gauge Bar (形勢勝率表示)
+    function updateEvalGauge() {
+      const statusText = document.getElementById('evalStatusText');
+      const barHuman = document.getElementById('evalBarHuman');
+      const barAi = document.getElementById('evalBarAi');
+      const labelHuman = document.getElementById('evalLabelHuman');
+      const labelAi = document.getElementById('evalLabelAi');
+
+      if (!statusText || !barHuman || !barAi) return;
+
+      // Get theme colors for Human and AI
+      const humanTheme = (humanPlayer === 1) ? COLOR_THEMES[currentThemeKey].p1 : COLOR_THEMES[currentThemeKey].p2;
+      const aiTheme = (aiPlayer === 1) ? COLOR_THEMES[currentThemeKey].p1 : COLOR_THEMES[currentThemeKey].p2;
+
+      // Apply dynamic colors matching current piece theme
+      if (humanTheme.name === '黒') {
+        barHuman.style.background = 'linear-gradient(90deg, #111827, #374151)';
+        barHuman.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.2)';
+      } else {
+        barHuman.style.background = `linear-gradient(90deg, ${humanTheme.dark || humanTheme.base}, ${humanTheme.base})`;
+        barHuman.style.boxShadow = `0 0 10px ${humanTheme.base}80`;
+      }
+
+      if (aiTheme.name === '白') {
+        barAi.style.background = 'linear-gradient(90deg, #e2e8f0, #ffffff)';
+        barAi.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.5)';
+      } else {
+        barAi.style.background = `linear-gradient(90deg, ${aiTheme.base}, ${aiTheme.light || aiTheme.base})`;
+        barAi.style.boxShadow = `0 0 10px ${aiTheme.base}80`;
+      }
+
+      const humanTextColor = (humanTheme.name === '黒') ? '#cbd5e1' : (humanTheme.light || humanTheme.base);
+      const aiTextColor = (aiTheme.name === '白') ? '#ffffff' : (aiTheme.light || aiTheme.base);
+
+      if (isGameOver) {
+        if (winningLine) {
+          const winner = board[winningLine[0]];
+          if (winner === humanPlayer) {
+            barHuman.style.width = '100%';
+            barAi.style.width = '0%';
+            labelHuman.textContent = `👤 人間 (${humanTheme.name}) 100%`;
+            labelAi.textContent = `🤖 AI (${aiTheme.name}) 0%`;
+            statusText.textContent = '100% vs 0% (🎉 あなたの勝利！)';
+            statusText.style.color = humanTextColor;
+          } else {
+            barHuman.style.width = '0%';
+            barAi.style.width = '100%';
+            labelHuman.textContent = `👤 人間 (${humanTheme.name}) 0%`;
+            labelAi.textContent = `🤖 AI (${aiTheme.name}) 100%`;
+            statusText.textContent = '0% vs 100% (🤖 AIの勝利！)';
+            statusText.style.color = aiTextColor;
+          }
+        } else {
+          barHuman.style.width = '50%';
+          barAi.style.width = '50%';
+          labelHuman.textContent = `👤 人間 (${humanTheme.name}) 50%`;
+          labelAi.textContent = `🤖 AI (${aiTheme.name}) 50%`;
+          statusText.textContent = '50% vs 50% (🤝 引き分け)';
+          statusText.style.color = '#9ca3af';
+        }
+        return;
+      }
+
+      // Compute board evaluation strictly from Human's perspective using Iterative Deepening & Clean Cache
+      let searchDepth = 5;
+      if (difficulty === 'easy') searchDepth = 3;
+      else if (difficulty === 'medium') searchDepth = 5;
+      else if (difficulty === 'hard') searchDepth = 7;
+      else if (difficulty === 'master') searchDepth = 8;
+      else if (difficulty === 'custom') searchDepth = Math.min(customDepth, 9);
+
+      let evalScore = 0;
+      const winCheck = checkWin(board);
+      if (winCheck) {
+        evalScore = (winCheck.winner === humanPlayer) ? 9999 : -9999;
+      } else {
+        if (currentTurn === humanPlayer) {
+          const searchRes = getBestMoveIterative(board, heights, searchDepth, 300, humanPlayer, aiPlayer);
+          evalScore = searchRes.score;
+        } else {
+          const searchRes = getBestMoveIterative(board, heights, searchDepth, 300, aiPlayer, humanPlayer);
+          evalScore = -searchRes.score;
+        }
+      }
+
+      let humanPct = 50;
+      let statusDesc = '互角';
+
+      if (evalScore >= 8000) {
+        humanPct = 100;
+        statusDesc = '👤 あなた必勝';
+      } else if (evalScore <= -8000) {
+        humanPct = 0;
+        statusDesc = '🤖 AI必勝 (相手詰み)';
+      } else {
+        humanPct = Math.round(50 + (evalScore / 3000) * 40);
+        humanPct = Math.max(1, Math.min(99, humanPct));
+
+        if (humanPct >= 80) statusDesc = '👤 あなた優勢';
+        else if (humanPct >= 60) statusDesc = '👤 あなたやや有利';
+        else if (humanPct >= 42) statusDesc = '⚖️ 互角';
+        else if (humanPct >= 20) statusDesc = '🤖 AIやや有利';
+        else statusDesc = '🤖 AI優勢';
+      }
+
+      const aiPct = 100 - humanPct;
+
+      barHuman.style.width = `${humanPct}%`;
+      barAi.style.width = `${aiPct}%`;
+
+      labelHuman.textContent = `👤 人間 (${humanTheme.name}) ${humanPct}%`;
+      labelHuman.style.color = humanTextColor;
+
+      labelAi.textContent = `🤖 AI (${aiTheme.name}) ${aiPct}%`;
+      labelAi.style.color = aiTextColor;
+
+      statusText.textContent = `${humanPct}% vs ${aiPct}% (${statusDesc})`;
+      if (humanPct >= 60) statusText.style.color = humanTextColor;
+      else if (humanPct <= 40) statusText.style.color = aiTextColor;
+      else statusText.style.color = '#ffffff';
+    }
+
+    function setDifficulty(lvl) {
+      difficulty = lvl;
+      document.getElementById('btnLevelEasy').classList.toggle('active', lvl === 'easy');
+      document.getElementById('btnLevelMedium').classList.toggle('active', lvl === 'medium');
+      document.getElementById('btnLevelHard').classList.toggle('active', lvl === 'hard');
+      document.getElementById('btnLevelMaster').classList.toggle('active', lvl === 'master');
+      document.getElementById('btnLevelCustom').classList.toggle('active', lvl === 'custom');
+
+      const customPanel = document.getElementById('customDiffPanel');
+      if (customPanel) {
+        customPanel.style.display = lvl === 'custom' ? 'flex' : 'none';
+      }
+
+      computeCoachingScores();
+      renderUI();
+    }
+
+    function updateCustomSettings() {
+      const depthVal = parseInt(document.getElementById('customDepthSlider').value, 10);
+      const timeVal = parseFloat(document.getElementById('customTimeSlider').value);
+
+      customDepth = depthVal;
+      customTimeLimitSec = timeVal;
+
+      document.getElementById('customDepthBadge').textContent = `${depthVal}手`;
+      document.getElementById('customTimeBadge').textContent = `${timeVal.toFixed(1)}秒`;
+
+      if (difficulty === 'custom') {
+        computeCoachingScores();
+        renderUI();
+      }
+    }
+
+    function toggleCoaching(enabled) {
+      coachingMode = enabled;
+      document.getElementById('coachingBanner').style.display = enabled ? 'flex' : 'none';
+      computeCoachingScores();
+      renderUI();
+    }
+
+    function changeTheme(themeKey) {
+      currentThemeKey = themeKey;
+      const t = COLOR_THEMES[themeKey];
+      document.documentElement.style.setProperty('--p1-base', t.p1.base);
+      document.documentElement.style.setProperty('--p1-light', t.p1.light);
+      document.documentElement.style.setProperty('--p1-dark', t.p1.dark);
+      document.documentElement.style.setProperty('--p2-base', t.p2.base);
+      document.documentElement.style.setProperty('--p2-light', t.p2.light);
+      document.documentElement.style.setProperty('--p2-dark', t.p2.dark);
+      renderUI();
+    }
+
+    
+    // Order Selection (First / Second)
+    function setOrder(order) {
+      humanPlayer = order;
+      aiPlayer = humanPlayer === 1 ? 2 : 1;
+      resetGame();
+    }
+
+    // Execute Move (Human or AI)
+    function executeMove(col, knownScore = null) {
+      if (isGameOver || heights[col] >= 4 || isAiThinking) return;
+
+      const level = heights[col];
+      const cellIdx = col + level * 16;
+      
+      board[cellIdx] = currentTurn;
+      heights[col]++;
+
+      const win = checkWin(board);
+      const isHuman = (currentTurn === humanPlayer);
+
+      let score = knownScore;
+      if (score === null) {
+        score = evaluateBoard(board, heights, currentTurn);
+      }
+
+      history.push({
+        turnNum: history.length + 1,
+        isHuman: isHuman,
+        colName: COL_NAMES[col],
+        score: score,
+        col: col,
+        x: col % 4,
+        y: Math.floor(col / 4),
+        z: level
+      });
+
+      if (win) {
+        isGameOver = true;
+        winningLine = win.line;
+      } else {
+        const filled = heights.reduce((a, b) => a + b, 0);
+        if (filled === 64) {
+          isGameOver = true; // Draw
+        } else {
+          currentTurn = currentTurn === 1 ? 2 : 1;
+        }
+      }
+
+      computeCoachingScores();
+      renderUI();
+
+      if (!isGameOver && currentTurn === aiPlayer) {
+        makeAiMove();
+      }
+    }
+
+    function resetGame() {
+      board.fill(0);
+      heights.fill(0);
+      currentTurn = 1;
+      isGameOver = false;
+      winningLine = null;
+      history = [];
+      coachingScores.fill(null);
+      isAiThinking = false;
+
+      document.getElementById('btnHumanFirst').classList.toggle('active', humanPlayer === 1);
+      document.getElementById('btnAIFirst').classList.toggle('active', humanPlayer === 2);
+
+      computeCoachingScores();
+      renderUI();
+
+      if (currentTurn === aiPlayer) {
+        makeAiMove();
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 5. UI Rendering & DOM Updates
+    // -------------------------------------------------------------
+    function updateStatusDisplay() {
+      const badge = document.getElementById('statusBadge');
+      const text = document.getElementById('statusText');
+
+      badge.className = 'status-badge';
+
+      if (isGameOver) {
+        if (winningLine) {
+          const winner = board[winningLine[0]];
+          if (winner === humanPlayer) {
+            text.textContent = '🎉 あなたの勝ちです！';
+            badge.classList.add('win-human');
+          } else {
+            text.textContent = '🤖 AIの勝利です！';
+            badge.classList.add('win-ai');
+          }
+        } else {
+          text.textContent = '🤝 引き分けです！';
+        }
+      } else if (isAiThinking) {
+        text.textContent = '🤖 AIが思考中...';
+      } else if (currentTurn === humanPlayer) {
+        text.textContent = '👤 あなたの手番です';
+      } else {
+        text.textContent = '🤖 AIの手番です';
+      }
+    }
+
+    function renderUI() {
+      updateStatusDisplay();
+      updateEvalGauge();
+
+      // Render 16 Quick Selector Buttons
+      const selector = document.getElementById('quickSelector');
+      selector.innerHTML = '';
+
+      for (let i = 0; i < 16; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'col-btn';
+        if (hoveredCol === i) btn.style.borderColor = 'var(--accent-color)';
+
+        const isFull = heights[i] >= 4;
+        btn.disabled = isFull || isGameOver || (currentTurn !== humanPlayer) || isAiThinking;
+
+        btn.onmouseenter = () => { hoveredCol = i; };
+        btn.onmouseleave = () => { hoveredCol = -1; };
+        btn.onclick = () => executeMove(i);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'col-name';
+        nameSpan.textContent = COL_NAMES[i];
+
+        const heightSpan = document.createElement('span');
+        heightSpan.className = 'col-height';
+        heightSpan.textContent = `${heights[i]}/4`;
+
+        btn.appendChild(nameSpan);
+        btn.appendChild(heightSpan);
+
+        if (coachingMode && coachingScores[i] !== null && !isFull) {
+          const score = coachingScores[i];
+          const scoreBadge = document.createElement('span');
+          scoreBadge.className = 'col-score-badge';
+
+          let signStr = '';
+          if (score >= 9000) {
+            signStr = '必勝';
+            scoreBadge.classList.add('score-green');
+          } else if (score <= -9000) {
+            signStr = '必敗';
+            scoreBadge.classList.add('score-red');
+          } else {
+            let moveWinPct = Math.round(50 + (score / 3000) * 40);
+            moveWinPct = Math.max(1, Math.min(99, moveWinPct));
+            signStr = `${moveWinPct}%`;
+
+            if (moveWinPct >= 60) {
+              scoreBadge.classList.add('score-green');
+            } else if (moveWinPct >= 40) {
+              scoreBadge.classList.add('score-yellow');
+            } else {
+              scoreBadge.classList.add('score-red');
+            }
+          }
+
+          scoreBadge.textContent = signStr;
+          btn.appendChild(scoreBadge);
+        }
+
+        selector.appendChild(btn);
+      }
+
+      // Render Move History
+      const histList = document.getElementById('historyList');
+      histList.innerHTML = '';
+
+      [...history].reverse().forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+
+        const left = document.createElement('div');
+        left.className = 'history-left';
+
+        const num = document.createElement('span');
+        num.className = 'turn-num';
+        num.textContent = `#${String(item.turnNum).padStart(2, '0')}`;
+
+        const pTag = document.createElement('span');
+        pTag.className = `player-tag ${item.isHuman ? 'player-human-tag' : 'player-ai-tag'}`;
+        pTag.textContent = item.isHuman ? '人間' : 'AI';
+
+        const pos = document.createElement('span');
+        pos.className = 'move-pos';
+        pos.textContent = `列 ${item.colName}`;
+
+        left.appendChild(num);
+        left.appendChild(pTag);
+        left.appendChild(pos);
+
+        const evalBadge = document.createElement('span');
+        evalBadge.className = 'eval-badge';
+
+        const val = item.score;
+        let valStr = '';
+        if (val >= 9000) valStr = '勝利手';
+        else if (val <= -9000) valStr = '敗北危局';
+        else valStr = val > 0 ? `+${val}` : `${val}`;
+
+        if (val >= 30) {
+          evalBadge.classList.add('score-green');
+        } else if (val >= -150) {
+          evalBadge.classList.add('score-yellow');
+        } else {
+          evalBadge.classList.add('score-red');
+        }
+
+        evalBadge.textContent = `[${valStr}]`;
+
+        div.appendChild(left);
+        div.appendChild(evalBadge);
+        histList.appendChild(div);
+      });
+    }
+
+    // -------------------------------------------------------------
+    // 6. 3D HTML5 Canvas Perspective Projection Engine
+    // -------------------------------------------------------------
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const container = canvas.parentElement;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = container.clientWidth * dpr;
+      canvas.height = container.clientHeight * dpr;
+      ctx.scale(dpr, dpr);
+    }
+
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      switchMobileTab(currentMobileTab);
+      autoAdjustCameraForDevice();
+    });
+    resizeCanvas();
+    autoAdjustCameraForDevice();
+
+
+    // -------------------------------------------------------------
+    // Mobile Responsive & Touch Control Engine
+    // -------------------------------------------------------------
+    let currentMobileTab = 'stage';
+
+    function switchMobileTab(tab) {
+      currentMobileTab = tab;
+      
+      const pStage = document.getElementById('panelStage');
+      const pSettings = document.getElementById('panelSettings');
+      const pHistory = document.getElementById('panelHistory');
+
+      const btnStage = document.getElementById('tabBtnStage');
+      const btnSettings = document.getElementById('tabBtnSettings');
+      const btnHistory = document.getElementById('tabBtnHistory');
+
+      if (window.innerWidth <= 768) {
+        pStage.classList.toggle('tab-hidden-mobile', tab !== 'stage');
+        pSettings.classList.toggle('tab-hidden-mobile', tab !== 'settings');
+        pHistory.classList.toggle('tab-hidden-mobile', tab !== 'history');
+
+        if (btnStage) btnStage.classList.toggle('active', tab === 'stage');
+        if (btnSettings) btnSettings.classList.toggle('active', tab === 'settings');
+        if (btnHistory) btnHistory.classList.toggle('active', tab === 'history');
+      } else {
+        pStage.classList.remove('tab-hidden-mobile');
+        pSettings.classList.remove('tab-hidden-mobile');
+        pHistory.classList.remove('tab-hidden-mobile');
+      }
+
+      setTimeout(() => {
+        resizeCanvas();
+      }, 50);
+    }
+
+    function autoAdjustCameraForDevice() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      // Adjust camera distance for mobile / tablet screens so full 3D tower fits
+      if (w <= 480) {
+        cameraDistance = h > w ? 520 : 450;
+      } else if (w <= 768) {
+        cameraDistance = h > w ? 480 : 420;
+      } else if (w <= 1100) {
+        cameraDistance = 420;
+      } else {
+        cameraDistance = 380;
+      }
+    }
+
+    // Touch Event Processing for Mobile & Tablet (Rotate, Pinch Zoom, Tap Move)
+    let touchStartDist = 0;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isTouchTapCandidate = false;
+
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        isDragging = true;
+        isTouchTapCandidate = true;
+        lastMouseX = e.touches[0].clientX;
+        lastMouseY = e.touches[0].clientY;
+        touchStartX = lastMouseX;
+        touchStartY = lastMouseY;
+      } else if (e.touches.length === 2) {
+        isDragging = false;
+        isTouchTapCandidate = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        touchStartDist = Math.hypot(dx, dy);
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault(); // Prevent body scroll while manipulating 3D stage
+
+      if (e.touches.length === 1 && isDragging) {
+        const cx = e.touches[0].clientX;
+        const cy = e.touches[0].clientY;
+        const dx = cx - lastMouseX;
+        const dy = cy - lastMouseY;
+
+        if (Math.hypot(cx - touchStartX, cy - touchStartY) > 10) {
+          isTouchTapCandidate = false;
+        }
+
+        cameraAngleY += dx * 0.008;
+        cameraAngleX += dy * 0.008;
+        cameraAngleX = Math.max(-1.4, Math.min(1.4, cameraAngleX));
+
+        lastMouseX = cx;
+        lastMouseY = cy;
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const newDist = Math.hypot(dx, dy);
+
+        if (touchStartDist > 0) {
+          const factor = touchStartDist / newDist;
+          zoomCamera(factor > 1 ? 1.03 : 0.97);
+          touchStartDist = newDist;
+        }
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+      if (isTouchTapCandidate && currentTurn === humanPlayer) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = touchStartX - rect.left;
+        const my = touchStartY - rect.top;
+
+        let closestCol = -1;
+        let minDist = 35; // Touch tap tolerance
+
+        for (let col = 0; col < 16; col++) {
+          const cx = col % 4;
+          const cy = Math.floor(col / 4);
+
+          const pBottom = project(cx, cy, 0);
+          const pTop = project(cx, cy, 3);
+
+          const dist = distToSegment({ x: mx, y: my }, pBottom, pTop);
+          if (dist < minDist) {
+            minDist = dist;
+            closestCol = col;
+          }
+        }
+
+        if (closestCol !== -1 && heights[closestCol] < 4 && !isGameOver) {
+          executeMove(closestCol);
+        }
+      }
+
+      isDragging = false;
+      isTouchTapCandidate = false;
+      touchStartDist = 0;
+    });
+
+
+    // 3D Projection Math
+    function project(x, y, z) {
+      const gridSpacing = 52;
+      // Center origin at 1.5, 1.5, 1.5
+      const cx = (x - 1.5) * gridSpacing;
+      const cy = (y - 1.5) * gridSpacing;
+      const cz = (z - 1.5) * gridSpacing;
+
+      // Yaw rotation (around Z-axis)
+      const cosY = Math.cos(cameraAngleY);
+      const sinY = Math.sin(cameraAngleY);
+      const x1 = cx * cosY - cy * sinY;
+      const y1 = cx * sinY + cy * cosY;
+      const z1 = cz;
+
+      // Pitch rotation (around rotated X-axis)
+      const cosX = Math.cos(cameraAngleX);
+      const sinX = Math.sin(cameraAngleX);
+      const x2 = x1;
+      const y2 = y1 * sinX - z1 * cosX;
+      const z2 = y1 * cosX + z1 * sinX;
+
+      // Perspective transformation
+      const distance = cameraDistance;
+      const scale = distance / (distance + y2);
+
+      const w = canvas.width / (window.devicePixelRatio || 1);
+      const h = canvas.height / (window.devicePixelRatio || 1);
+
+      const px = w / 2 + x2 * scale;
+      const py = h / 2 - z2 * scale;
+
+      return { x: px, y: py, scale: scale, depth: y2 };
+    }
+
+    // Canvas Interaction (Rotate Camera)
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+
+        cameraAngleY += dx * 0.008;
+        cameraAngleX += dy * 0.008;
+
+        // Clamp Pitch Angle
+        cameraAngleX = Math.max(-1.4, Math.min(1.4, cameraAngleX));
+
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+      } else {
+        // Raycast check for hover on 16 columns
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        let closestCol = -1;
+        let minDist = 30;
+
+        for (let col = 0; col < 16; col++) {
+          const cx = col % 4;
+          const cy = Math.floor(col / 4);
+
+          const pBottom = project(cx, cy, 0);
+          const pTop = project(cx, cy, 3);
+
+          // Distance from point (mx, my) to pole line segment
+          const dist = distToSegment({ x: mx, y: my }, pBottom, pTop);
+          if (dist < minDist) {
+            minDist = dist;
+            closestCol = col;
+          }
+        }
+
+        if (closestCol !== hoveredCol) {
+          hoveredCol = closestCol;
+          renderUI();
+        }
+      }
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      zoomCamera(e.deltaY > 0 ? 1.08 : 0.92);
+    }, { passive: false });
+
+    canvas.addEventListener('click', () => {
+      if (!isDragging && hoveredCol !== -1 && currentTurn === humanPlayer) {
+        executeMove(hoveredCol);
+      }
+    });
+
+    function resetCamera() {
+      autoAdjustCameraForDevice();
+      cameraAngleX = 0.5;
+      cameraAngleY = 0.78;
+      cameraDistance = 380;
+    }
+
+    function zoomCamera(factor) {
+      cameraDistance = Math.max(200, Math.min(700, cameraDistance * factor));
+    }
+
+    function distToSegment(p, v, w) {
+      const l2 = (v.x - w.x) ** 2 + (v.y - w.y) ** 2;
+      if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y);
+      let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
+    }
+
+    // Render 3D Scene Loop
+    function draw3DScene() {
+      const w = canvas.width / (window.devicePixelRatio || 1);
+      const h = canvas.height / (window.devicePixelRatio || 1);
+
+      ctx.clearRect(0, 0, w, h);
+
+      const renderList = [];
+
+      // 1. Base Grid Floor
+      const p00 = project(-0.8, -0.8, -0.6);
+      const p30 = project(3.8, -0.8, -0.6);
+      const p33 = project(3.8, 3.8, -0.6);
+      const p03 = project(-0.8, 3.8, -0.6);
+
+      renderList.push({
+        type: 'floor',
+        depth: (p00.depth + p30.depth + p33.depth + p03.depth) / 4,
+        draw: () => {
+          ctx.beginPath();
+          ctx.moveTo(p00.x, p00.y);
+          ctx.lineTo(p30.x, p30.y);
+          ctx.lineTo(p33.x, p33.y);
+          ctx.lineTo(p03.x, p03.y);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Floor grid lines
+          for (let i = 0; i <= 3; i++) {
+            const pa = project(i, 0, -0.55);
+            const pb = project(i, 3, -0.55);
+            ctx.beginPath();
+            ctx.moveTo(pa.x, pa.y);
+            ctx.lineTo(pb.x, pb.y);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            const pc = project(0, i, -0.55);
+            const pd = project(3, i, -0.55);
+            ctx.beginPath();
+            ctx.moveTo(pc.x, pc.y);
+            ctx.lineTo(pd.x, pd.y);
+            ctx.stroke();
+          }
+        }
+      });
+
+      // 2. 16 Solid Poles
+      for (let col = 0; col < 16; col++) {
+        const cx = col % 4;
+        const cy = Math.floor(col / 4);
+
+        const pBot = project(cx, cy, -0.5);
+        const pTop = project(cx, cy, 3.5);
+
+        renderList.push({
+          type: 'pole',
+          col: col,
+          depth: Math.max(pBot.depth, pTop.depth) + 0.001,
+          draw: () => {
+            const isHovered = hoveredCol === col;
+            ctx.beginPath();
+            ctx.moveTo(pBot.x, pBot.y);
+            ctx.lineTo(pTop.x, pTop.y);
+            ctx.lineWidth = Math.max(4, 7 * pBot.scale);
+            ctx.strokeStyle = isHovered ? '#00f2ff' : '#475569';
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Pole cap
+            ctx.beginPath();
+            ctx.arc(pTop.x, pTop.y, 4 * pTop.scale, 0, Math.PI * 2);
+            ctx.fillStyle = isHovered ? '#00f2ff' : '#94a3b8';
+            ctx.fill();
+          }
+        });
+      }
+
+      // 3. Placed Spheres
+      const t = COLOR_THEMES[currentThemeKey];
+
+      for (let idx = 0; idx < 64; idx++) {
+        const val = board[idx];
+        if (val === 0) continue;
+
+        const cx = idx % 4;
+        const cy = Math.floor(idx / 4) % 4;
+        const cz = Math.floor(idx / 16);
+
+        const p = project(cx, cy, cz);
+        const radius = 18 * p.scale;
+
+        renderList.push({
+          type: 'sphere',
+          depth: p.depth,
+          draw: () => {
+            const colors = val === 1 ? t.p1 : t.p2;
+
+            // 3D Radial Gradient Shading
+            const grad = ctx.createRadialGradient(
+              p.x - radius * 0.3,
+              p.y - radius * 0.3,
+              radius * 0.1,
+              p.x,
+              p.y,
+              radius
+            );
+            grad.addColorStop(0, colors.light);
+            grad.addColorStop(0.7, colors.base);
+            grad.addColorStop(1, colors.dark);
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        });
+      }
+
+      // 4. Hover Preview Sphere
+      if (hoveredCol !== -1 && heights[hoveredCol] < 4 && !isGameOver && currentTurn === humanPlayer) {
+        const cx = hoveredCol % 4;
+        const cy = Math.floor(hoveredCol / 4);
+        const cz = heights[hoveredCol];
+
+        const p = project(cx, cy, cz);
+        const radius = 18 * p.scale;
+
+        renderList.push({
+          type: 'preview',
+          depth: p.depth - 1, // Draw slightly in front
+          draw: () => {
+            const colors = currentTurn === 1 ? t.p1 : t.p2;
+            ctx.save();
+            ctx.globalAlpha = 0.5;
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = colors.light;
+            ctx.fill();
+
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+          }
+        });
+      }
+
+      // 5. Teaching Mode Scores on 3D Canvas
+      if (coachingMode && currentTurn === humanPlayer && !isGameOver) {
+        for (let col = 0; col < 16; col++) {
+          if (heights[col] >= 4 || coachingScores[col] === null) continue;
+
+          const cx = col % 4;
+          const cy = Math.floor(col / 4);
+
+          const p = project(cx, cy, 3.8);
+          const score = coachingScores[col];
+
+          renderList.push({
+            type: 'coachingLabel',
+            depth: p.depth - 2,
+            draw: () => {
+              let scoreStr = score > 0 ? `+${score}` : `${score}`;
+              if (score >= 9000) scoreStr = 'WIN';
+              else if (score <= -9000) scoreStr = 'LOSE';
+
+              let bg = 'rgba(245, 158, 11, 0.85)';
+              if (score >= 30) bg = 'rgba(16, 185, 129, 0.85)';
+              else if (score <= -150) bg = 'rgba(239, 68, 68, 0.85)';
+
+              ctx.font = 'bold 11px sans-serif';
+              const textWidth = ctx.measureText(scoreStr).width;
+
+              ctx.fillStyle = bg;
+              ctx.beginPath();
+              ctx.roundRect(p.x - textWidth / 2 - 5, p.y - 10, textWidth + 10, 18, 6);
+              ctx.fill();
+
+              ctx.fillStyle = '#ffffff';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(scoreStr, p.x, p.y);
+            }
+          });
+        }
+      }
+
+      // 6. Winning Line Glow Highlight
+      if (winningLine) {
+        const idx0 = winningLine[0];
+        const idx3 = winningLine[3];
+
+        const p0 = project(idx0 % 4, Math.floor(idx0 / 4) % 4, Math.floor(idx0 / 16));
+        const p3 = project(idx3 % 4, Math.floor(idx3 / 4) % 4, Math.floor(idx3 / 16));
+
+        renderList.push({
+          type: 'winningLine',
+          depth: -9999, // Render on top
+          draw: () => {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = 'rgba(52, 211, 153, 0.8)';
+            ctx.lineCap = 'round';
+            ctx.shadowColor = '#34d399';
+            ctx.shadowBlur = 15;
+            ctx.stroke();
+            ctx.restore();
+          }
+        });
+      }
+
+      // Painter's Algorithm: Sort by depth back-to-front
+      renderList.sort((a, b) => b.depth - a.depth);
+
+      renderList.forEach(obj => obj.draw());
+
+      requestAnimationFrame(draw3DScene);
+    }
+
+    // Check environment: Show download button ONLY on Developer URL / Local
+    const isDevEnv = window.location.hostname.includes('ais-dev') || 
+                     window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1';
+    const docBtn = document.getElementById('docDownloadBtn');
+    if (docBtn) {
+      docBtn.style.display = isDevEnv ? 'inline-flex' : 'none';
+    }
+
+    // Start 3D Loop
+    requestAnimationFrame(draw3DScene);
+
+    // Initial Setup
+    resetGame();
+  </script>
+</body>
+</html>
