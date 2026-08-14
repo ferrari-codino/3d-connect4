@@ -541,32 +541,68 @@
 
     .canvas-overlay-hint {
       position: absolute;
-      bottom: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(10, 12, 16, 0.85);
+      top: 14px;
+      left: 14px;
+      background: rgba(10, 14, 24, 0.85);
       backdrop-filter: blur(8px);
-      padding: 6px 14px;
-      border-radius: 20px;
+      padding: 5px 12px;
+      border-radius: 16px;
       font-size: 11px;
-      color: var(--text-muted);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #94a3b8;
+      border: 1px solid rgba(0, 242, 255, 0.22);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      z-index: 10;
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+      transition: opacity 0.4s ease, transform 0.4s ease, visibility 0.4s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .canvas-overlay-hint.hint-hidden {
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-6px);
       pointer-events: none;
-      text-transform: uppercase;
-      letter-spacing: 1px;
+    }
+
+    .hint-close-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      color: #94a3b8;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9.5px;
+      cursor: pointer;
+      margin-left: 2px;
+      transition: all 0.2s;
+    }
+
+    .hint-close-btn:hover {
+      background: rgba(239, 68, 68, 0.4);
+      color: #ffffff;
     }
 
     .canvas-tools {
       position: absolute;
-      top: 16px;
-      right: 16px;
+      top: 14px;
+      right: 14px;
       display: flex;
-      gap: 8px;
+      gap: 6px;
+      z-index: 10;
     }
 
     .tool-btn {
-      width: 36px;
-      height: 36px;
+      width: 34px;
+      height: 34px;
       border-radius: 8px;
       background: rgba(10, 12, 16, 0.85);
       backdrop-filter: blur(8px);
@@ -576,7 +612,7 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13.5px;
       transition: all 0.2s;
     }
 
@@ -984,6 +1020,28 @@
         min-height: 240px;
         height: 46vh;
         max-height: 420px;
+      }
+
+      .canvas-overlay-hint {
+        top: 8px;
+        left: 8px;
+        padding: 4px 8px;
+        font-size: 9.5px;
+        border-radius: 12px;
+        gap: 4px;
+      }
+
+      .canvas-tools {
+        top: 8px;
+        right: 8px;
+        gap: 4px;
+      }
+
+      .tool-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+        border-radius: 6px;
       }
 
       .quick-selector {
@@ -1989,9 +2047,12 @@
           <button class="tool-btn" onclick="resetCamera()" title="視点をリセット">↺</button>
           <button class="tool-btn" onclick="zoomCamera(0.9)" title="拡大">+</button>
           <button class="tool-btn" onclick="zoomCamera(1.1)" title="縮小">-</button>
+          <button class="tool-btn" id="btnHelpTool" onclick="toggleCanvasHint()" title="操作案内の表示/非表示">ℹ️</button>
         </div>
-        <div class="canvas-overlay-hint">
-          ドラッグで3D視点回転 / ホイールで拡大縮小 / 支柱クリックで着手
+        <div class="canvas-overlay-hint" id="canvasOverlayHint" onclick="dismissCanvasHint()">
+          <span>💡</span>
+          <span id="canvasHintText">ドラッグ: 視点回転 / タップ: 着手</span>
+          <button type="button" class="hint-close-btn" onclick="dismissCanvasHint(event)" title="案内を閉じる">✕</button>
         </div>
       </div>
 
@@ -4645,6 +4706,60 @@
       }
     }
 
+    // ==========================================
+    // 3D Canvas Guide Hint Lifecycle Engine
+    // ==========================================
+    let canvasHintTimer = null;
+
+    function updateCanvasHintText() {
+      const hintTextEl = document.getElementById('canvasHintText');
+      if (!hintTextEl) return;
+      const isMobile = window.innerWidth <= 768 || ('ontouchstart' in window);
+      hintTextEl.textContent = isMobile 
+        ? 'ドラッグ: 視点回転 / タップ: 着手' 
+        : 'ドラッグ: 視点回転 / クリック: 着手';
+    }
+
+    function showCanvasHintTemporary(durationMs = 3500) {
+      const hint = document.getElementById('canvasOverlayHint');
+      if (!hint) return;
+      updateCanvasHintText();
+      hint.classList.remove('hint-hidden');
+      
+      if (canvasHintTimer) clearTimeout(canvasHintTimer);
+      if (durationMs > 0) {
+        canvasHintTimer = setTimeout(() => {
+          dismissCanvasHint();
+        }, durationMs);
+      }
+    }
+
+    function dismissCanvasHint(e) {
+      if (e && e.stopPropagation) {
+        e.stopPropagation();
+      }
+      const hint = document.getElementById('canvasOverlayHint');
+      if (hint) {
+        hint.classList.add('hint-hidden');
+      }
+      if (canvasHintTimer) {
+        clearTimeout(canvasHintTimer);
+        canvasHintTimer = null;
+      }
+    }
+
+    function toggleCanvasHint(e) {
+      if (e && e.stopPropagation) e.stopPropagation();
+      playSoundEffect('tap');
+      const hint = document.getElementById('canvasOverlayHint');
+      if (!hint) return;
+      if (hint.classList.contains('hint-hidden')) {
+        showCanvasHintTemporary(4000);
+      } else {
+        dismissCanvasHint();
+      }
+    }
+
     // Touch Event Processing for Mobile & Tablet (Rotate, Pinch Zoom, Tap Move)
     let touchStartDist = 0;
     let touchStartX = 0;
@@ -4652,6 +4767,7 @@
     let isTouchTapCandidate = false;
 
     canvas.addEventListener('touchstart', (e) => {
+      dismissCanvasHint();
       if (e.touches.length === 1) {
         isDragging = true;
         isTouchTapCandidate = true;
@@ -4774,6 +4890,7 @@
 
     // Canvas Interaction (Rotate Camera)
     canvas.addEventListener('mousedown', (e) => {
+      dismissCanvasHint();
       isDragging = true;
       lastMouseX = e.clientX;
       lastMouseY = e.clientY;
@@ -5586,6 +5703,7 @@
     resetGame();
     switchMobileTab(currentMobileTab);
     initAccessCounter();
+    showCanvasHintTemporary(3500);
   </script>
 </body>
 </html>
