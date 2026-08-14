@@ -984,6 +984,10 @@
         padding: 4px 6px;
         font-size: 10px;
       }
+      .btn-kids-guide {
+        padding: 4px 6px;
+        font-size: 10px;
+      }
       .btn-sound {
         padding: 4px 6px;
         font-size: 10px;
@@ -1422,6 +1426,78 @@
       color: #000;
     }
 
+    .btn-kids-guide {
+      background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+      color: #ffffff;
+      border: 1px solid #38bdf8;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 0 12px rgba(14, 165, 233, 0.35);
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    .btn-kids-guide:hover {
+      background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 0 18px rgba(14, 165, 233, 0.6);
+      color: #ffffff;
+    }
+
+    .kids-guide-banner-card {
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.18) 0%, rgba(14, 165, 233, 0.1) 100%);
+      border: 1.5px solid rgba(56, 189, 248, 0.4);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .kids-guide-banner-card:hover {
+      border-color: #38bdf8;
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.28) 0%, rgba(14, 165, 233, 0.2) 100%);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .kids-guide-modal-card {
+      max-width: 900px;
+      width: 96%;
+      height: 92vh;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      background: #0f172a;
+    }
+
+    .kids-guide-iframe-wrap {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: #ffffff;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .kids-guide-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
     .btn-heroes-panel {
       background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.25) 100%);
       color: #fbbf24;
@@ -1824,6 +1900,9 @@
       <button type="button" class="btn-sound" id="btnSoundToggle" onclick="toggleSound()" title="効果音のON/OFF切り替え">
         <span id="soundIcon">🔊</span> <span id="soundLabel">効果音 ON</span>
       </button>
+      <button type="button" class="btn-kids-guide" id="btnKidsGuideHeader" onclick="openKidsGuideModal()" title="AI完全攻略・特訓マスターガイド＆必勝Tips（A4 PDF保存・印刷・QRコード対応）">
+        ⚔️ <span>AI攻略特訓ガイド(A4 PDF)</span>
+      </button>
       <button type="button" class="btn-heroes" id="btnShowHeroesHeader" onclick="openHeroesModal()" title="AIに勝利した勇者たちの一覧を見る">
         🏆 <span>AIに勝利した勇者たち</span>
       </button>
@@ -1864,6 +1943,19 @@
         <div class="setup-badge-step">ステップ ① 設定</div>
         <h2 class="setup-heading">🎮 ゲーム設定をチェックしよう！</h2>
         <p class="setup-subheading">すきな設定を選んでね（※このままスタートしてもOK！）</p>
+      </div>
+
+      <!-- AI完全攻略・特訓ガイド ＆ 必勝Tips (A4 PDF) バナーカード -->
+      <div class="kids-guide-banner-card" onclick="openKidsGuideModal()" title="AI完全攻略・特訓マスターガイド＆必勝Tips集（A4 PDF保存・印刷・QRコード対応）を開く">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <span style="font-size:12.5px; font-weight:800; color:#38bdf8; display:flex; align-items:center; gap:6px;">
+            ⚔️ <span>AI完全攻略・特訓ガイド ＆ 必勝Tips</span>
+          </span>
+          <span style="font-size:10px; font-weight:800; background:#f59e0b; color:#000; padding:2px 7px; border-radius:10px;">A4 PDF</span>
+        </div>
+        <div style="font-size:10.5px; color:#cbd5e1; line-height:1.35; margin-top:2px;">
+          空間認識力を極めてAIを撃破！76本の勝利ライン・直感3D操作・3大必勝戦術を図解！
+        </div>
       </div>
 
       <!-- ニックネーム入力 (5〜10文字・任意) -->
@@ -2186,6 +2278,42 @@
       <div class="modal-actions">
         <button type="button" class="modal-btn-primary" onclick="closeHeroesModal()">
           🎮 ゲーム画面に戻る
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑦ AI完全攻略・特訓マスターガイド＆必勝Tips A4 PDF モーダル -->
+  <div class="modal-overlay" id="kidsGuideModal">
+    <div class="modal-card kids-guide-modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">
+        <div>
+          <h2 style="font-size:16.5px; font-weight:800; color:#38bdf8; display:flex; align-items:center; gap:6px;">
+            ⚔️ 立体四目並べ３D AI完全攻略・特訓マスターガイド ＆ 必勝Tips集
+          </h2>
+          <p style="font-size:11px; color:#94a3b8; margin-top:2px;">
+            空間認識力を極めてAIに勝利する！ 必勝戦術 ＆ 攻略Tips集（A4形式・美麗インフォグラフィックス / QRコード付）
+          </p>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button type="button" class="btn-kids-guide" onclick="printKidsGuideIframe()" style="padding:6px 14px; font-size:12px;" title="A4サイズで印刷またはPDF保存">
+            🖨️ A4 PDF保存 / 印刷
+          </button>
+          <a href="/strategy_guide.html" target="_blank" class="modal-btn-secondary" style="padding:6px 12px; font-size:11.5px; text-decoration:none;" title="別タブで全画面表示">
+            ↗️ 別タブで開く
+          </a>
+          <button type="button" onclick="closeKidsGuideModal()" style="background:none; border:none; color:#9ca3af; font-size:22px; cursor:pointer; padding:2px 6px;">✕</button>
+        </div>
+      </div>
+
+      <div class="kids-guide-iframe-wrap">
+        <iframe id="kidsGuideIframe" src="/strategy_guide.html" class="kids-guide-iframe" title="立体四目並べ３D AI完全攻略・特訓マスターガイド"></iframe>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+        <span style="font-size:10.5px; color:#94a3b8;">💡 ブラウザの「印刷」画面で「PDFに保存」を選択するとA4用紙1枚の綺麗なPDFとしてダウンロードできます。</span>
+        <button type="button" class="modal-btn-secondary" onclick="closeKidsGuideModal()" style="padding:6px 16px;">
+          閉じる
         </button>
       </div>
     </div>
@@ -3921,6 +4049,32 @@
     function openHeroesFromModal() {
       closeResultModalOnly();
       openHeroesModal();
+    }
+
+    // -------------------------------------------------------------
+    // Kids Guide (A4 PDF & Infographic Manual) Modal Controls
+    // -------------------------------------------------------------
+    function openKidsGuideModal() {
+      playSoundEffect('tap');
+      const modal = document.getElementById('kidsGuideModal');
+      if (modal) modal.classList.add('active');
+    }
+
+    function closeKidsGuideModal() {
+      playSoundEffect('tap');
+      const modal = document.getElementById('kidsGuideModal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    function printKidsGuideIframe() {
+      playSoundEffect('tap');
+      const iframe = document.getElementById('kidsGuideIframe');
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } else {
+        window.open('/strategy_guide.html', '_blank');
+      }
     }
 
     function escapeHtml(str) {
