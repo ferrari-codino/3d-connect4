@@ -926,6 +926,24 @@
       .doc-download-btn {
         display: none;
       }
+      .header-access-counter {
+        padding: 3px 6px;
+        gap: 4px;
+        font-size: 10px;
+        border-radius: 14px;
+      }
+      .counter-pulse-dot {
+        width: 5px;
+        height: 5px;
+      }
+      .counter-label {
+        font-size: 8px;
+        letter-spacing: 0.4px;
+      }
+      .counter-number {
+        font-size: 10.5px;
+        min-width: auto;
+      }
       .btn-heroes {
         padding: 4px 6px;
         font-size: 10px;
@@ -1226,6 +1244,68 @@
       letter-spacing: 0.2px;
       white-space: nowrap;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    /* High-Sense Header Access Counter */
+    .header-access-counter {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.75) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+      padding: 5px 11px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #e2e8f0;
+      white-space: nowrap;
+      user-select: none;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .header-access-counter:hover {
+      border-color: rgba(56, 189, 248, 0.6);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+    }
+    .counter-pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      animation: counterPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes counterPulse {
+      0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 8px #10b981; }
+      50% { opacity: 0.35; transform: scale(0.85); box-shadow: 0 0 2px #10b981; }
+    }
+    .counter-label {
+      font-size: 9.5px;
+      letter-spacing: 0.8px;
+      color: #38bdf8;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .counter-number {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-variant-numeric: tabular-nums;
+      color: #f8fafc;
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      min-width: 32px;
+      display: inline-block;
+      text-align: right;
+    }
+    .counter-unit {
+      font-size: 9.5px;
+      color: #94a3b8;
+      font-weight: 600;
+      margin-left: -1px;
     }
 
     .btn-sound {
@@ -1677,6 +1757,12 @@
     </div>
     <div class="header-right-group">
       <div class="header-credit-badge">2026.08.14_1.00版、Presented by Portofino</div>
+      <div class="header-access-counter" id="headerAccessCounter" title="全プレイヤーの総合アクセス数（リアルタイム集計）" onclick="refreshAccessCounter()">
+        <div class="counter-pulse-dot"></div>
+        <span class="counter-label">ACCESS</span>
+        <span class="counter-number" id="accessCountValue">29</span>
+        <span class="counter-unit">回</span>
+      </div>
       <button type="button" class="btn-sound" id="btnSoundToggle" onclick="toggleSound()" title="効果音のON/OFF切り替え">
         <span id="soundIcon">🔊</span> <span id="soundLabel">効果音 ON</span>
       </button>
@@ -5202,13 +5288,295 @@
       requestAnimationFrame(draw3DScene);
     }
 
-    // Check environment: Show download button ONLY on Developer URL / Local
+    // Check environment: Show download button on Developer URL / Preview URL / Local
     const isDevEnv = window.location.hostname.includes('ais-dev') || 
+                     window.location.hostname.includes('ais-pre') || 
                      window.location.hostname === 'localhost' || 
                      window.location.hostname === '127.0.0.1';
     const docBtn = document.getElementById('docDownloadBtn');
     if (docBtn) {
       docBtn.style.display = isDevEnv ? 'inline-flex' : 'none';
+    }
+
+    // ==========================================
+    // High-Sense Global Access Counter Engine
+    // ==========================================
+    const COUNTER_NAMESPACE = 'portofino_connect4_3d_master_v2';
+    const COUNTER_KEY = 'global_visitors_v2';
+    const LOCAL_COUNTER_KEY = '3d_c4_local_access_cache_v2';
+    const BASE_ACCESS_COUNT = 29; // 29回からスタート
+    let currentDisplayedCount = 0;
+
+    function animateCounterNumber(targetValue) {
+      const el = document.getElementById('accessCountValue');
+      if (!el) return;
+
+      const duration = 1000; // ms
+      const startTime = performance.now();
+      const startValue = currentDisplayedCount > 0 ? currentDisplayedCount : Math.max(0, targetValue - 10);
+
+      function updateNumber(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // easeOutQuart
+        const ease = 1 - Math.pow(1 - progress, 4);
+        const current = Math.round(startValue + (targetValue - startValue) * ease);
+        el.textContent = current.toLocaleString('ja-JP');
+
+        if (progress < 1) {
+          requestAnimationFrame(updateNumber);
+        } else {
+          el.textContent = targetValue.toLocaleString('ja-JP');
+          currentDisplayedCount = targetValue;
+        }
+      }
+      requestAnimationFrame(updateNumber);
+    }
+
+    async function initAccessCounter() {
+      const counterEl = document.getElementById('accessCountValue');
+      if (!counterEl) return;
+
+      // 1. Get cached local baseline
+      let localCount = parseInt(localStorage.getItem(LOCAL_COUNTER_KEY) || '0', 10);
+      if (!localCount || isNaN(localCount) || localCount < BASE_ACCESS_COUNT) {
+        localCount = BASE_ACCESS_COUNT;
+      }
+
+      // Check session increment
+      const sessionKey = '3d_c4_session_counted_v2';
+      const hasCountedSession = sessionStorage.getItem(sessionKey);
+      if (!hasCountedSession) {
+        localCount += 1;
+        sessionStorage.setItem(sessionKey, 'true');
+        localStorage.setItem(LOCAL_COUNTER_KEY, localCount.toString());
+      }
+
+      // Initial immediate render
+      animateCounterNumber(localCount);
+
+      // 2. Fetch from real-time global counter API asynchronously
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+        const apiUrl = `https://api.counterapi.dev/v1/${COUNTER_NAMESPACE}/${COUNTER_KEY}/up`;
+        const res = await fetch(apiUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && typeof data.count === 'number') {
+            const finalCount = BASE_ACCESS_COUNT + data.count;
+            localStorage.setItem(LOCAL_COUNTER_KEY, finalCount.toString());
+            if (finalCount !== localCount) {
+              animateCounterNumber(finalCount);
+            }
+            recordAccessStatistics(finalCount, !hasCountedSession);
+            return;
+          }
+        }
+      } catch (e) {
+        // Fallback gracefully without error
+        console.debug('Access counter synced locally:', localCount);
+      }
+
+      // Record local statistics on fallback as well
+      recordAccessStatistics(localCount, !hasCountedSession);
+    }
+
+    // ==========================================
+    // Analytics & Statistical Logger Engine
+    // ==========================================
+    const STATS_LOGS_KEY = '3d_c4_access_analytics_logs_v1';
+    const STATS_DAILY_KEY = '3d_c4_access_daily_summary_v1';
+
+    function recordAccessStatistics(currentCount, isNewSession) {
+      try {
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+        const timeStr = now.toTimeString().split(' ')[0]; // HH:mm:ss
+        const hour = now.getHours();
+        const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][now.getDay()];
+
+        const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth <= 768;
+        const deviceType = window.innerWidth <= 600 ? 'Mobile' : (window.innerWidth <= 1024 ? 'Tablet' : 'Desktop');
+
+        const logEntry = {
+          id: 'acc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          timestamp: now.toISOString(),
+          date: dateStr,
+          time: timeStr,
+          hour: hour,
+          dayOfWeek: dayOfWeek,
+          device: deviceType,
+          screenSize: `${window.innerWidth}x${window.innerHeight}`,
+          lang: navigator.language || 'ja-JP',
+          countAtAccess: currentCount,
+          isNewSession: !!isNewSession
+        };
+
+        // 1. Append to full historical logs (kept safely in localStorage)
+        let logs = [];
+        try {
+          const rawLogs = localStorage.getItem(STATS_LOGS_KEY);
+          if (rawLogs) logs = JSON.parse(rawLogs);
+          if (!Array.isArray(logs)) logs = [];
+        } catch (e) {
+          logs = [];
+        }
+        logs.unshift(logEntry);
+        // Keep up to 2,000 raw access session logs (efficient storage)
+        if (logs.length > 2000) logs = logs.slice(0, 2000);
+        localStorage.setItem(STATS_LOGS_KEY, JSON.stringify(logs));
+
+        // 2. Update Daily Aggregated Summary
+        let dailySummary = {};
+        try {
+          const rawSummary = localStorage.getItem(STATS_DAILY_KEY);
+          if (rawSummary) dailySummary = JSON.parse(rawSummary);
+        } catch (e) {
+          dailySummary = {};
+        }
+
+        if (!dailySummary[dateStr]) {
+          dailySummary[dateStr] = {
+            date: dateStr,
+            dayOfWeek: dayOfWeek,
+            totalVisits: 0,
+            newSessions: 0,
+            mobileVisits: 0,
+            desktopVisits: 0,
+            lastRecordedCount: currentCount,
+            firstRecordedAt: timeStr,
+            lastRecordedAt: timeStr
+          };
+        }
+
+        dailySummary[dateStr].totalVisits += 1;
+        if (isNewSession) dailySummary[dateStr].newSessions += 1;
+        if (isMobileDevice) dailySummary[dateStr].mobileVisits += 1;
+        else dailySummary[dateStr].desktopVisits += 1;
+        dailySummary[dateStr].lastRecordedCount = currentCount;
+        dailySummary[dateStr].lastRecordedAt = timeStr;
+
+        localStorage.setItem(STATS_DAILY_KEY, JSON.stringify(dailySummary));
+      } catch (err) {
+        console.warn('Analytics logging notice:', err);
+      }
+    }
+
+    // ==========================================
+    // Public Global Analytics API (for future screens & export)
+    // ==========================================
+    window.getAccessStatistics = function() {
+      try {
+        const rawLogs = localStorage.getItem(STATS_LOGS_KEY);
+        const rawSummary = localStorage.getItem(STATS_DAILY_KEY);
+        const logs = rawLogs ? JSON.parse(rawLogs) : [];
+        const daily = rawSummary ? JSON.parse(rawSummary) : {};
+        const currentCount = parseInt(localStorage.getItem(LOCAL_COUNTER_KEY) || '0', 10);
+
+        // Hourly distribution breakdown
+        const hourlyDistribution = Array(24).fill(0);
+        logs.forEach(l => {
+          if (typeof l.hour === 'number' && l.hour >= 0 && l.hour < 24) {
+            hourlyDistribution[l.hour]++;
+          }
+        });
+
+        // Device breakdown
+        const deviceCounts = { Mobile: 0, Tablet: 0, Desktop: 0 };
+        logs.forEach(l => {
+          if (deviceCounts[l.device] !== undefined) deviceCounts[l.device]++;
+        });
+
+        return {
+          currentGlobalCount: currentCount,
+          totalLoggedVisits: logs.length,
+          dailySummary: daily,
+          hourlyDistribution: hourlyDistribution,
+          deviceBreakdown: deviceCounts,
+          recentLogs: logs.slice(0, 100)
+        };
+      } catch (e) {
+        return { error: e.message };
+      }
+    };
+
+    // CSVエクスポート機能（Excelやスプレッドシートで分析可能）
+    window.exportAccessAnalyticsCSV = function() {
+      try {
+        const stats = window.getAccessStatistics();
+        if (!stats.dailySummary) {
+          alert('統計データがありません。');
+          return;
+        }
+
+        const headers = ['日付', '曜日', '総訪問数', '新規セッション数', 'モバイル訪問', 'PC訪問', '最終カウント', '最終訪問時刻'];
+        const rows = Object.values(stats.dailySummary).map(d => [
+          d.date,
+          d.dayOfWeek,
+          d.totalVisits,
+          d.newSessions,
+          d.mobileVisits,
+          d.desktopVisits,
+          d.lastRecordedCount,
+          d.lastRecordedAt
+        ]);
+
+        let csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [
+          headers.join(','),
+          ...rows.map(e => e.join(','))
+        ].join('\n');
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `connect4_3d_access_stats_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (e) {
+        console.error('CSV Export Error:', e);
+      }
+    };
+
+    // JSONエクスポート機能
+    window.exportAccessAnalyticsJSON = function() {
+      try {
+        const data = window.getAccessStatistics();
+        const jsonStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2));
+        const link = document.createElement('a');
+        link.setAttribute('href', jsonStr);
+        link.setAttribute('download', `connect4_3d_access_analytics_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (e) {
+        console.error('JSON Export Error:', e);
+      }
+    };
+
+    // コンソールで統計を一覧表示するヘルパー
+    window.printAccessStatistics = function() {
+      const stats = window.getAccessStatistics();
+      console.log('%c📊 立体四目並べ3D アクセス統計サマリー', 'color:#38bdf8; font-weight:bold; font-size:14px;');
+      console.log('累計グローバルカウント:', stats.currentGlobalCount);
+      console.log('端末内ログ記録件数:', stats.totalLoggedVisits);
+      console.table(stats.dailySummary);
+      console.log('デバイス内訳:', stats.deviceBreakdown);
+      return stats;
+    };
+
+    function refreshAccessCounter() {
+      playSoundEffect('tap');
+      const badge = document.getElementById('headerAccessCounter');
+      if (badge) {
+        badge.style.transform = 'scale(0.94)';
+        setTimeout(() => { badge.style.transform = ''; }, 180);
+      }
+      initAccessCounter();
     }
 
     // Start 3D Loop
@@ -5217,6 +5585,7 @@
     // Initial Setup
     resetGame();
     switchMobileTab(currentMobileTab);
+    initAccessCounter();
   </script>
 </body>
 </html>
