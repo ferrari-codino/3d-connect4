@@ -2012,7 +2012,7 @@
           <h2 style="font-size:18px; font-weight:800; color:#fbbf24; display:flex; align-items:center; gap:8px;">
             🏆 AIに勝利した勇者たち
           </h2>
-          <p style="font-size:11.5px; color:#94a3b8; margin-top:3px;">
+          <p id="heroesModalSubInfo" style="font-size:11.5px; color:#94a3b8; margin-top:3px;">
             見事AIを打ち破った直近30名の勝者栄誉殿堂（最新順）
           </p>
         </div>
@@ -3629,7 +3629,7 @@
       showGameResultModal('lose', `⏱️ 考慮時間制限（${humanTimeLimitSec}秒）を超過したため時間切れ負けとなりました。`);
     }
 
-    // Champions Hall of Fame (AIに勝利した勇者たち・直近30名)
+    // Champions Hall of Fame (AIに勝利した勇者たち・全データを永続保持 / 画面表示は直近30名)
     const HEROES_STORAGE_KEY = '3d_connect4_heroes_v1';
 
     function getHeroesList() {
@@ -3670,13 +3670,18 @@
         });
       }
 
-      // Persist the sanitized clean list
+      // Persist the full clean list (no truncation)
       try {
-        localStorage.setItem(HEROES_STORAGE_KEY, JSON.stringify(heroes.slice(0, 30)));
+        localStorage.setItem(HEROES_STORAGE_KEY, JSON.stringify(heroes));
       } catch (e) {}
 
       return heroes;
     }
+
+    // 全ての勇者データを取得するグローバル関数（将来の別画面や集計機能で活用可能）
+    window.getAllHeroRecords = function() {
+      return getHeroesList();
+    };
 
     function saveHeroVictory() {
       const heroes = getHeroesList();
@@ -3702,12 +3707,11 @@
         timeLimit: humanTimeLimitSec > 0 ? `${humanTimeLimitSec}秒` : 'なし'
       };
 
-      // Add to front and limit to 30 records
+      // 先頭に追加し、全件を漏れなく永続ストレージに保存
       heroes.unshift(newRecord);
-      const top30 = heroes.slice(0, 30);
 
       try {
-        localStorage.setItem(HEROES_STORAGE_KEY, JSON.stringify(top30));
+        localStorage.setItem(HEROES_STORAGE_KEY, JSON.stringify(heroes));
       } catch (e) {
         console.warn('LocalStorage save error:', e);
       }
@@ -3716,15 +3720,22 @@
     function openHeroesModal() {
       const modal = document.getElementById('heroesModal');
       const tbody = document.getElementById('heroesTableBody');
+      const subInfo = document.getElementById('heroesModalSubInfo');
       if (!modal || !tbody) return;
 
-      const heroes = getHeroesList();
+      const allHeroes = getHeroesList();
+      const displayHeroes = allHeroes.slice(0, 30); // 画面表示は直近30名
+
+      if (subInfo) {
+        subInfo.textContent = `見事AIを打ち破った直近30名を表示（全 ${allHeroes.length} 件の勇者記録を完全保存中）`;
+      }
+
       tbody.innerHTML = '';
 
-      if (heroes.length === 0) {
+      if (displayHeroes.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px; color:#94a3b8;">まだ勇者の記録がありません。AIを倒して最初の勇者になろう！</td></tr>`;
       } else {
-        heroes.forEach((h, idx) => {
+        displayHeroes.forEach((h, idx) => {
           const tr = document.createElement('tr');
 
           let rankBadgeClass = 'rank-other';
