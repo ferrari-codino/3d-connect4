@@ -2399,7 +2399,7 @@
       // 6. YZ plane diagonals (8 lines)
       for (let x = 0; x < 4; x++) {
         WINNING_LINES.push([getIdx(x, 0, 0), getIdx(x, 1, 1), getIdx(x, 2, 2), getIdx(x, 3, 3)]);
-        WINNING_LINES.push([getIdx(x, 3, 0), getIdx(x, 2, 1), getIdx(x, 1, 2), getIdx(0, 3, 3)]);
+        WINNING_LINES.push([getIdx(x, 3, 0), getIdx(x, 2, 1), getIdx(x, 1, 2), getIdx(x, 0, 3)]);
       }
       // 7. Space 3D diagonals (4 lines)
       WINNING_LINES.push([getIdx(0, 0, 0), getIdx(1, 1, 1), getIdx(2, 2, 2), getIdx(3, 3, 3)]);
@@ -2418,18 +2418,45 @@
 
     initWinningLines();
 
-    // Opening Book for 3D Connect Four Center Control
+    // Opening Book for 3D Connect Four Center Control & Space Diagonal Strategy
     const OPENING_CENTER_COLS = [5, 6, 9, 10]; // Center 2x2 columns B2, B3, C2, C3
+    // Corner to corresponding center diagonal mapping
+    const CORNER_TO_CENTER_MAP = {
+      0: 5,   // A1 -> B2
+      3: 6,   // A4 -> B3
+      12: 9,  // D1 -> C2
+      15: 10  // D4 -> C3
+    };
 
     function getOpeningBookMove(b, h) {
       const placed = history.length;
       if (placed >= 4) return -1; // Only for first 4 moves
 
+      // Master opening book
+      if (placed === 0) {
+        // First move: Choose top strategic center column (B2 or C3)
+        const topStarts = [5, 10, 6, 9];
+        return topStarts[Math.floor(Math.random() * topStarts.length)];
+      }
+
+      if (placed === 1) {
+        const firstMoveCol = history[0].col;
+        if (CORNER_TO_CENTER_MAP[firstMoveCol] !== undefined && h[CORNER_TO_CENTER_MAP[firstMoveCol]] < 4) {
+          // Counter corner opening by occupying matching space-diagonal center
+          return CORNER_TO_CENTER_MAP[firstMoveCol];
+        }
+        if (OPENING_CENTER_COLS.includes(firstMoveCol)) {
+          // Counter center opening with diagonal center partner
+          const diagPartner = firstMoveCol === 5 ? 10 : (firstMoveCol === 10 ? 5 : (firstMoveCol === 6 ? 9 : 6));
+          if (h[diagPartner] < 4) return diagPartner;
+        }
+      }
+
       // Check available center columns
       const openCenters = OPENING_CENTER_COLS.filter(col => h[col] < 4);
       if (openCenters.length === 0) return -1;
 
-      // Pick center column with highest strategic value or random among top center cols
+      // Pick center column with highest strategic space value
       openCenters.sort((a, b) => {
         const xA = a % 4, yA = Math.floor(a / 4);
         const xB = b % 4, yB = Math.floor(b / 4);
@@ -2722,6 +2749,11 @@
       let pTieredThreats = 0;
       let oTieredThreats = 0;
 
+      const pThreats = [];
+      const oThreats = [];
+
+      const isPlayer1 = (evalPlayer === 1);
+
       // 1. Precise 76 Line Pattern & Reachable Threat Evaluation
       for (let i = 0; i < 76; i++) {
         const line = WINNING_LINES[i];
@@ -2741,41 +2773,56 @@
         if (pCount === 4) return 9999;  // 【自分の4並び（絶対勝利）】
         if (oCount === 4) return -9999; // 【相手の4並び（絶対敗北）】
 
+        // Space 3D diagonals (indices 72~75) have extreme geometric power
+        const isSpaceDiag = (i >= 72);
+        const lineMultiplier = isSpaceDiag ? 1.35 : 1.0;
+
         if (pCount === 3) {
           const col = emptyIdx % 16;
           const z = Math.floor(emptyIdx / 16);
+          const isOddLevel = (z === 0 || z === 2);
+          // Parity Advantage: P1 favors Odd (0, 2), P2 favors Even (1, 3)
+          const hasParityAdvantage = (isPlayer1 && isOddLevel) || (!isPlayer1 && !isOddLevel);
+
           if (h && h[col] === z) {
             pImmediateThreats++;
-            score += 450;
+            pThreats.push({ col, z, type: 'immediate' });
+            score += Math.round((460 + (hasParityAdvantage ? 120 : 40)) * lineMultiplier);
           } else if (h && h[col] < z) {
-            // Tiered threat (requires stacking below)
             pTieredThreats++;
-            score += 150;
+            pThreats.push({ col, z, type: 'tiered' });
+            score += Math.round((160 + (hasParityAdvantage ? 90 : 30)) * lineMultiplier);
           } else {
-            score += 300;
+            score += Math.round(300 * lineMultiplier);
           }
         } else if (pCount === 2) {
-          score += 40;
+          score += Math.round(42 * lineMultiplier);
         } else if (pCount === 1) {
-          score += 6;
+          score += Math.round(7 * lineMultiplier);
         }
 
         if (oCount === 3) {
           const col = emptyIdx % 16;
           const z = Math.floor(emptyIdx / 16);
+          const isOddLevel = (z === 0 || z === 2);
+          const isOppP1 = (oppPlayer === 1);
+          const oppHasParity = (isOppP1 && isOddLevel) || (!isOppP1 && !isOddLevel);
+
           if (h && h[col] === z) {
             oImmediateThreats++;
-            score -= 650;
+            oThreats.push({ col, z, type: 'immediate' });
+            score -= Math.round((660 + (oppHasParity ? 150 : 50)) * lineMultiplier);
           } else if (h && h[col] < z) {
             oTieredThreats++;
-            score -= 220;
+            oThreats.push({ col, z, type: 'tiered' });
+            score -= Math.round((240 + (oppHasParity ? 110 : 30)) * lineMultiplier);
           } else {
-            score -= 400;
+            score -= Math.round(400 * lineMultiplier);
           }
         } else if (oCount === 2) {
-          score -= 60;
+          score -= Math.round(65 * lineMultiplier);
         } else if (oCount === 1) {
-          score -= 10;
+          score -= Math.round(11 * lineMultiplier);
         }
       }
 
@@ -2783,10 +2830,25 @@
       if (pImmediateThreats >= 2) return 8800;  // 自陣の2箇所同時王手（必勝）
       if (oImmediateThreats >= 2) return -8800; // 敵陣の2箇所同時王手（必敗）
 
-      if (pImmediateThreats === 1 && pTieredThreats >= 1) score += 800;  // 1手即時王手 + Tieredトラップ
-      if (oImmediateThreats === 1 && oTieredThreats >= 1) score -= 1200; // 相手の1手即時王手 + Tieredトラップ
+      if (pImmediateThreats === 1 && pTieredThreats >= 1) score += 850;
+      if (oImmediateThreats === 1 && oTieredThreats >= 1) score -= 1300;
 
-      // 3. Center Dominance & 3D Interlock Geometry Bonus
+      // 3. Poison Square & Zugzwang Analysis
+      // Ground square right below opponent's tiered winning square is a Poison Square
+      for (let ot of oThreats) {
+        if (ot.type === 'tiered' && h && h[ot.col] === ot.z - 1) {
+          // Playing in ot.col hands opponent an immediate win on top!
+          score -= 1600;
+        }
+      }
+      for (let pt of pThreats) {
+        if (pt.type === 'tiered' && h && h[pt.col] === pt.z - 1) {
+          // Opponent cannot play in pt.col without handing us the win on top -> Zugzwang lock
+          score += 650;
+        }
+      }
+
+      // 4. Center Dominance & 3D Interlock Geometry Bonus
       for (let idx = 0; idx < 64; idx++) {
         const val = b[idx];
         if (val === 0) continue;
@@ -2798,7 +2860,7 @@
         // 3D Core Central Cube (1,1,1) to (2,2,2) receives maximum interlock bonus
         const isCore3D = (x === 1 || x === 2) && (y === 1 || y === 2) && (z === 1 || z === 2);
         const centerProx = (1.5 - Math.abs(x - 1.5)) + (1.5 - Math.abs(y - 1.5)) + (1.5 - Math.abs(z - 1.5));
-        const totalPositionalValue = CELL_LINE_COUNTS[idx] * 2 + Math.round(centerProx * 3) + (isCore3D ? 12 : 0);
+        const totalPositionalValue = CELL_LINE_COUNTS[idx] * 2 + Math.round(centerProx * 3.5) + (isCore3D ? 16 : 0);
 
         if (val === evalPlayer) {
           score += totalPositionalValue;
@@ -3225,10 +3287,10 @@
           timeLimitMs = 2000;
         } else if (difficulty === 'master') {
           const filled = heights.reduce((a, b) => a + b, 0);
-          if (filled < 20) targetDepth = 8;
-          else if (filled < 36) targetDepth = 10;
-          else targetDepth = 12;
-          timeLimitMs = 2500;
+          if (filled < 12) targetDepth = 9;
+          else if (filled < 24) targetDepth = 11;
+          else targetDepth = 14;
+          timeLimitMs = 3000;
         } else if (difficulty === 'custom') {
           targetDepth = customDepth;
           timeLimitMs = Math.round(customTimeLimitSec * 1000);

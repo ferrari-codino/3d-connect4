@@ -89,7 +89,7 @@
       min-height: 297mm;
       max-height: 297mm;
       background: #ffffff;
-      padding: 8.5mm 10mm;
+      padding: 7.5mm 9.5mm;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
       border-radius: 6px;
       position: relative;
@@ -125,9 +125,9 @@
     .header-banner {
       position: relative;
       z-index: 1;
-      background: linear-gradient(135deg, #0f172a 0%, #0369a1 55%, #0284c7 100%);
-      border-radius: 12px;
-      padding: 9px 14px;
+      background: linear-gradient(135deg, #0f172a 0%, #0369a1 50%, #0284c7 100%);
+      border-radius: 11px;
+      padding: 8px 13px;
       color: #ffffff;
       display: flex;
       align-items: center;
@@ -146,8 +146,8 @@
       color: #ffffff;
       font-size: 19px;
       font-weight: 900;
-      width: 42px;
-      height: 42px;
+      width: 40px;
+      height: 40px;
       border-radius: 10px;
       display: flex;
       align-items: center;
@@ -157,7 +157,7 @@
     }
 
     .title-area h1 {
-      font-size: 20px;
+      font-size: 19px;
       font-weight: 900;
       letter-spacing: 0.5px;
       line-height: 1.2;
@@ -166,7 +166,7 @@
     }
 
     .title-area p {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 800;
       color: #bae6fd;
       margin-top: 2px;
@@ -178,7 +178,7 @@
     .target-pill {
       background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
       color: #ffffff;
-      padding: 4px 10px;
+      padding: 4px 11px;
       border-radius: 9999px;
       font-size: 11px;
       font-weight: 900;
@@ -196,8 +196,8 @@
       z-index: 1;
       display: flex;
       flex-direction: column;
-      gap: 6.5mm;
-      margin-top: 3mm;
+      gap: 5.5mm;
+      margin-top: 2.5mm;
       margin-bottom: 2mm;
       flex: 1;
       justify-content: space-between;
@@ -206,10 +206,10 @@
     /* Section Component */
     .section-card {
       background: #ffffff;
-      border-radius: 11px;
+      border-radius: 10px;
       border: 1.5px solid #e2e8f0;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-      padding: 7px 11px;
+      box-shadow: 0 2px 7px rgba(0, 0, 0, 0.03);
+      padding: 6px 10px;
       position: relative;
     }
 
@@ -217,16 +217,16 @@
       display: flex;
       align-items: center;
       gap: 7px;
-      margin-bottom: 5px;
+      margin-bottom: 4.5px;
     }
 
     .step-num {
-      width: 20px;
-      height: 20px;
+      width: 19px;
+      height: 19px;
       border-radius: 50%;
       color: #ffffff;
       font-weight: 900;
-      font-size: 11.5px;
+      font-size: 11px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -234,17 +234,17 @@
 
     .step-num.blue { background: #0284c7; }
     .step-num.green { background: #10b981; }
-    .step-num.orange { background: #f59e0b; }
+    .step-num.gold { background: #d97706; }
     .step-num.purple { background: #8b5cf6; }
 
     .section-title {
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 900;
       color: #0f172a;
     }
 
     .section-subtitle {
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 800;
       color: var(--text-muted);
       margin-left: auto;
@@ -254,14 +254,14 @@
     .rules-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
+      gap: 5px;
     }
 
     .rule-box {
       background: #f8fafc;
       border: 1.5px solid #e2e8f0;
-      border-radius: 9px;
-      padding: 5px;
+      border-radius: 8px;
+      padding: 4px;
       text-align: center;
       display: flex;
       flex-direction: column;
@@ -275,7 +275,7 @@
     }
 
     .rule-tag {
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 900;
       color: #0369a1;
       margin-bottom: 2px;
@@ -286,165 +286,168 @@
     }
 
     .visual-board-mini {
-      width: 58px;
-      height: 44px;
+      width: 52px;
+      height: 38px;
       background: #0f172a;
-      border-radius: 6px;
+      border-radius: 5px;
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
-      margin: 2px 0;
-      box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+      margin: 1px 0;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
     }
 
     .rule-desc {
-      font-size: 9px;
+      font-size: 8.5px;
       font-weight: 700;
       color: #475569;
-      line-height: 1.25;
+      line-height: 1.2;
     }
 
     /* Visual diagrams inside rule-box */
     .mini-line {
       display: flex;
-      gap: 3px;
+      gap: 2.5px;
     }
     .mini-ball {
-      width: 9.5px;
-      height: 9.5px;
+      width: 8.5px;
+      height: 8.5px;
       border-radius: 50%;
       background: #38bdf8;
-      box-shadow: 0 0 5px #38bdf8;
+      box-shadow: 0 0 4px #38bdf8;
     }
     .mini-ball.gold {
       background: #fbbf24;
-      box-shadow: 0 0 6px #fbbf24;
+      box-shadow: 0 0 5px #fbbf24;
     }
     .mini-diag {
       position: relative;
-      width: 42px;
-      height: 32px;
+      width: 38px;
+      height: 28px;
     }
     .mini-diag .mini-ball {
       position: absolute;
     }
 
-    /* Section 2: Easy Controls */
+    /* Section 2: Direct Controls */
     .control-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 7px;
+      gap: 6px;
     }
 
     .control-card {
       background: #f0f9ff;
       border: 1.5px solid #bae6fd;
-      border-radius: 9px;
-      padding: 6px 8px;
+      border-radius: 8px;
+      padding: 5px 7px;
       display: flex;
       align-items: center;
-      gap: 7px;
+      gap: 6px;
     }
 
     .control-icon {
-      font-size: 20px;
-      min-width: 30px;
-      height: 30px;
+      font-size: 17px;
+      min-width: 27px;
+      height: 27px;
       background: #ffffff;
-      border-radius: 7px;
+      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 2px 5px rgba(2, 132, 199, 0.15);
+      box-shadow: 0 2px 4px rgba(2, 132, 199, 0.15);
       border: 1px solid #7dd3fc;
     }
 
     .control-text h4 {
-      font-size: 10.5px;
+      font-size: 10px;
       font-weight: 900;
       color: #0369a1;
       margin-bottom: 1px;
     }
 
     .control-text p {
-      font-size: 9px;
+      font-size: 8.5px;
       color: #334155;
       font-weight: 700;
-      line-height: 1.25;
+      line-height: 1.2;
     }
 
-    /* Section 3: 3 Secret Tips to Win */
-    .tips-grid {
+    /* Section 3: Master Level Grand Tactics (日本代表級・極限奥義) */
+    .master-tactics-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 7px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5.5px;
     }
 
-    .tip-card {
-      background: #fffbeb;
+    .tactic-box {
+      background: #fffdf5;
       border: 1.5px solid #fde68a;
-      border-radius: 9px;
-      padding: 7px 8px;
-      position: relative;
+      border-radius: 8px;
+      padding: 5px 6px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
 
-    .tip-badge {
+    .tactic-tag {
       display: inline-flex;
       align-items: center;
       gap: 3px;
-      background: #f59e0b;
+      background: #d97706;
       color: #ffffff;
-      font-size: 8.5px;
+      font-size: 8px;
       font-weight: 900;
-      padding: 2px 6px;
+      padding: 1.5px 5px;
       border-radius: 9999px;
-      margin-bottom: 3px;
+      margin-bottom: 2.5px;
+      align-self: flex-start;
     }
 
-    .tip-title {
-      font-size: 10.5px;
+    .tactic-title {
+      font-size: 9.8px;
       font-weight: 900;
-      color: #92400e;
-      margin-bottom: 3px;
-      line-height: 1.25;
-    }
-
-    .tip-body {
-      font-size: 9px;
-      font-weight: 700;
       color: #78350f;
-      line-height: 1.35;
+      margin-bottom: 2px;
+      line-height: 1.2;
     }
 
-    .tip-highlight {
-      color: #dc2626;
+    .tactic-body {
+      font-size: 8.2px;
+      font-weight: 700;
+      color: #92400e;
+      line-height: 1.3;
+    }
+
+    .tactic-highlight {
+      color: #b91c1c;
       font-weight: 900;
     }
 
-    /* Section 4: Friendly Functions & Features */
+    /* Section 4: Training & Hall of Fame */
     .features-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 7px;
+      gap: 6px;
     }
 
     .feature-item {
       background: #faf5ff;
       border: 1.5px solid #e9d5ff;
-      border-radius: 9px;
-      padding: 5px 8px;
+      border-radius: 8px;
+      padding: 4.5px 7px;
       display: flex;
       align-items: center;
-      gap: 7px;
+      gap: 6px;
     }
 
     .feature-icon-badge {
-      font-size: 16px;
-      min-width: 26px;
-      height: 26px;
+      font-size: 15px;
+      min-width: 24px;
+      height: 24px;
       background: #ffffff;
-      border-radius: 7px;
+      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -452,16 +455,16 @@
     }
 
     .feature-item h4 {
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 900;
       color: #6b21a8;
     }
 
     .feature-item p {
-      font-size: 8.5px;
+      font-size: 8.2px;
       font-weight: 700;
       color: #581c87;
-      line-height: 1.25;
+      line-height: 1.2;
     }
 
     /* Footer & QR Code Section */
@@ -469,13 +472,13 @@
       position: relative;
       z-index: 1;
       background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      border-radius: 11px;
+      border-radius: 10px;
       border: 1.5px solid #334155;
-      padding: 8px 12px;
+      padding: 6.5px 11px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
       color: #ffffff;
       box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
     }
@@ -483,23 +486,23 @@
     .footer-qr-area {
       display: flex;
       align-items: center;
-      gap: 9px;
+      gap: 8px;
       background: rgba(255, 255, 255, 0.08);
-      padding: 4px 8px;
-      border-radius: 8px;
+      padding: 3.5px 7px;
+      border-radius: 7px;
       border: 1px solid rgba(255, 255, 255, 0.12);
     }
 
     .qr-box {
-      width: 52px;
-      height: 52px;
+      width: 48px;
+      height: 48px;
       background: #ffffff;
-      border-radius: 6px;
-      padding: 3px;
+      border-radius: 5px;
+      padding: 2.5px;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
     }
 
     .qr-box svg {
@@ -514,7 +517,7 @@
     }
 
     .qr-text-info .qr-label {
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 900;
       color: #38bdf8;
       display: flex;
@@ -523,7 +526,7 @@
     }
 
     .qr-text-info .qr-url {
-      font-size: 8.5px;
+      font-size: 8px;
       font-weight: 800;
       color: #f1f5f9;
       letter-spacing: 0.2px;
@@ -535,20 +538,20 @@
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 2px;
+      gap: 1.5px;
     }
 
     .footer-right-message .app-badge-title {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 900;
       color: #fbbf24;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
     }
 
     .footer-right-message .motto-text {
-      font-size: 9px;
+      font-size: 8.5px;
       font-weight: 700;
       color: #94a3b8;
     }
@@ -609,7 +612,7 @@
       <div class="header-left">
         <div class="badge-icon">4³</div>
         <div class="title-area">
-          <h1>立体四目並べ３D AI完全攻略・特訓ガイド</h1>
+          <h1>立体四目並べ３D AI完全攻略・特訓マスターガイド</h1>
           <p>★ 空間認識力を極めてAIに勝利する！ 必勝戦術 ＆ 攻略Tips集 ★</p>
         </div>
       </div>
@@ -664,9 +667,9 @@
             <div class="visual-board-mini">
               <div class="mini-diag">
                 <div class="mini-ball" style="top: 2px; left: 2px;"></div>
-                <div class="mini-ball" style="top: 10px; left: 12px;"></div>
-                <div class="mini-ball" style="top: 18px; left: 22px;"></div>
-                <div class="mini-ball" style="top: 26px; left: 32px;"></div>
+                <div class="mini-ball" style="top: 9px; left: 11px;"></div>
+                <div class="mini-ball" style="top: 16px; left: 20px;"></div>
+                <div class="mini-ball" style="top: 23px; left: 29px;"></div>
               </div>
             </div>
             <p class="rule-desc">おなじフロアや壁で<br>クロス（斜め）に並べる！</p>
@@ -678,9 +681,9 @@
             <div class="visual-board-mini">
               <div class="mini-diag">
                 <div class="mini-ball gold" style="top: 2px; left: 2px;"></div>
-                <div class="mini-ball gold" style="top: 9px; left: 12px;"></div>
-                <div class="mini-ball gold" style="top: 16px; left: 22px;"></div>
-                <div class="mini-ball gold" style="top: 23px; left: 32px;"></div>
+                <div class="mini-ball gold" style="top: 8px; left: 11px;"></div>
+                <div class="mini-ball gold" style="top: 14px; left: 20px;"></div>
+                <div class="mini-ball gold" style="top: 20px; left: 29px;"></div>
               </div>
             </div>
             <p class="rule-desc"><span style="color:#059669; font-weight:900;">３Dの必殺ライン！</span><br>空間をかけぬける４つ！</p>
@@ -723,41 +726,48 @@
         </div>
       </section>
 
-      <!-- STEP 3: AIに勝つための3つの必勝Tips -->
+      <!-- STEP 3: 日本代表級が唸る空間戦略マスターの4大極限奥義 -->
       <section class="section-card" style="background: #fffdf5; border-color: #fde68a;">
         <div class="section-head">
-          <div class="step-num orange">3</div>
-          <h2 class="section-title" style="color: #92400e;">AIを打ち破る ３大必勝タクティクス！（Tips集）</h2>
-          <span class="section-subtitle" style="color: #b45309;">この戦略をマスターしてAIに勝利しよう！</span>
+          <div class="step-num gold">3</div>
+          <h2 class="section-title" style="color: #92400e;">日本代表級が唸る！ 空間戦略マスター ４大極限奥義</h2>
+          <span class="section-subtitle" style="color: #b45309;">「マスター」AIの思考ルーチンに完全同期！</span>
         </div>
 
-        <div class="tips-grid">
-          <!-- Tip 1 -->
-          <div class="tip-card">
-            <div class="tip-badge">戦術 ①</div>
-            <div class="tip-title">中央の４本支柱を最優先で制圧！</div>
-            <p class="tip-body">
-              中央4本の支柱は、タテ・ヨコ・ナナメ・立体ナナメが交差する最重要拠点！<br>
-              <span class="tip-highlight">序盤に中央を制する者がゲームを制す！</span>
+        <div class="master-tactics-grid">
+          <!-- Tactic 1: パリティ理論 -->
+          <div class="tactic-box">
+            <div class="tactic-tag">奥義 ①</div>
+            <div class="tactic-title">パリティ（偶奇段）支配理論</div>
+            <p class="tactic-body">
+              重力のある4段空間では、<span class="tactic-highlight">先手は奇数段（1・3段）</span>、<span class="tactic-highlight">後手は偶数段（2・4段）</span>でリーチを作ると主導権を握れる！相手に踏み台を置かせる「段位トラップ」を仕掛けろ！
             </p>
           </div>
 
-          <!-- Tip 2 -->
-          <div class="tip-card">
-            <div class="tip-badge">戦術 ②</div>
-            <div class="tip-title">相手の「リーチ（３連）」を封殺！</div>
-            <p class="tip-body">
-              相手が３つ並べたら次の手で敗北！<br>
-              盤面を回転させて<span class="tip-highlight">立体的なリーチをいち早く察知＆ブロック</span>しよう！
+          <!-- Tactic 2: 3Dマルチフォーク -->
+          <div class="tactic-box">
+            <div class="tactic-tag">奥義 ②</div>
+            <div class="tactic-title">3Dマルチフォーク（複合Wリーチ）</div>
+            <p class="tactic-body">
+              1手の着手で「平面斜め」と「立体主対角線」など<span class="tactic-highlight">異なる次元の2本以上のリーチを同時完成</span>させる！相手は1箇所しか防げず、絶対防御不能の詰み（チェックメイト）が確定！
             </p>
           </div>
 
-          <!-- Tip 3 -->
-          <div class="tip-card">
-            <div class="tip-badge">戦術 ③</div>
-            <div class="tip-title">アシスト機能を活用して特訓！</div>
-            <p class="tip-body">
-              対戦設定の<span class="tip-highlight">「アシストモード」</span>をONにすると、光のガイドが危険箇所や好手をナビゲート！実戦力を急速強化！
+          <!-- Tactic 3: 地雷マスとツークツワンク -->
+          <div class="tactic-box">
+            <div class="tactic-tag">奥義 ③</div>
+            <div class="tactic-title">地雷マス ＆ ツークツワンク誘導</div>
+            <p class="tactic-body">
+              空中に自陣の勝ちマスがある場合、その直下のマスは相手にとって<span class="tactic-highlight">「置いたら即敗北の地雷マス」</span>。他に着手できる安全な支柱を奪い、相手に地雷を踏ませて自滅へ追い込め！
+            </p>
+          </div>
+
+          <!-- Tactic 4: 4大主対角線 & コア8マス -->
+          <div class="tactic-box">
+            <div class="tactic-tag">奥義 ④</div>
+            <div class="tactic-title">4大主対角線 ＆ コア8マスの排他制御</div>
+            <p class="tactic-body">
+              立方体の頂点を貫く4本の「立体主対角線」と中央4支柱の「中心8マス」は全76本中最大の交差連結力を持つ！<span class="tactic-highlight">序盤のコア排他支配</span>が勝率を極大化する！
             </p>
           </div>
         </div>
@@ -767,24 +777,24 @@
       <section class="section-card">
         <div class="section-head">
           <div class="step-num purple">4</div>
-          <h2 class="section-title">実力向上をサポートする 便利機能</h2>
-          <span class="section-subtitle">試行錯誤をくり返して 強くなろう！</span>
+          <h2 class="section-title">実力向上をサポートする 便利機能 ＆ 特訓モード</h2>
+          <span class="section-subtitle">試行錯誤をくり返し 最強の座へ！</span>
         </div>
 
         <div class="features-row">
           <div class="feature-item">
             <div class="feature-icon-badge">↩️</div>
             <div>
-              <h4>「待った（１手戻す）」で戦術を再検証</h4>
-              <p>悪手を指してしまっても「待った」ボタンでいつでもやり直して、最適な次手を研究できる！</p>
+              <h4>「待った（１手戻す）」で深層戦術を再検証</h4>
+              <p>形勢を覆された手を「待った」で戻し、マスターAIの狙い（パリティやフォーク）を逆算研究！</p>
             </div>
           </div>
 
           <div class="feature-item">
             <div class="feature-icon-badge">🏆</div>
             <div>
-              <h4>AIに勝利して「勇者の殿堂」に名を刻め！</h4>
-              <p>AIを撃破すると勝利レコードを記録！連勝記録を伸ばして最強の空間戦略マスターを目指そう！</p>
+              <h4>「マスターAI」を撃破し 勇者の殿堂に名を刻め！</h4>
+              <p>最高峰の深層探索AIを打ち破ると、勝利レコードと連勝数が殿堂に永久刻印される！</p>
             </div>
           </div>
         </div>
