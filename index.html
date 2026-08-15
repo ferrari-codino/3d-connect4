@@ -2066,12 +2066,14 @@
         </button>
       </div>
 
+      <!--
+      【支柱クイック選択機能：プレイ中に使用しないため一時コメントアウト（復活可能性のため保持）】
       <div class="panel-title" style="margin-top: 10px;">
         🎯 支柱クイック選択
       </div>
       <div class="quick-selector" id="quickSelector">
-        <!-- 16 column buttons will be rendered dynamically -->
       </div>
+      -->
 
       <!-- リアルタイム対戦設定サマリー -->
       <div class="setup-summary-card">
@@ -4702,74 +4704,76 @@
         }
       }
 
-      // Render 16 Quick Selector Buttons
+      // Render 16 Quick Selector Buttons (if present in DOM)
       const selector = document.getElementById('quickSelector');
-      selector.innerHTML = '';
+      if (selector) {
+        selector.innerHTML = '';
 
-      for (let i = 0; i < 16; i++) {
-        const btn = document.createElement('button');
-        btn.className = 'col-btn';
-        if (hoveredCol === i) btn.style.borderColor = 'var(--accent-color)';
+        for (let i = 0; i < 16; i++) {
+          const btn = document.createElement('button');
+          btn.className = 'col-btn';
+          if (hoveredCol === i) btn.style.borderColor = 'var(--accent-color)';
 
-        const isFull = heights[i] >= 4;
-        btn.disabled = isFull || isGameOver || (currentTurn !== humanPlayer) || isAiThinking;
+          const isFull = heights[i] >= 4;
+          btn.disabled = isFull || isGameOver || (currentTurn !== humanPlayer) || isAiThinking;
 
-        btn.onmouseenter = () => { hoveredCol = i; };
-        btn.onmouseleave = () => { hoveredCol = -1; };
-        btn.onclick = () => executeMove(i);
+          btn.onmouseenter = () => { hoveredCol = i; };
+          btn.onmouseleave = () => { hoveredCol = -1; };
+          btn.onclick = () => executeMove(i);
 
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'col-name';
-        nameSpan.textContent = COL_NAMES[i];
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'col-name';
+          nameSpan.textContent = COL_NAMES[i];
 
-        const heightSpan = document.createElement('span');
-        heightSpan.className = 'col-height';
-        heightSpan.textContent = `${heights[i]}/4`;
+          const heightSpan = document.createElement('span');
+          heightSpan.className = 'col-height';
+          heightSpan.textContent = `${heights[i]}/4`;
 
-        btn.appendChild(nameSpan);
-        btn.appendChild(heightSpan);
+          btn.appendChild(nameSpan);
+          btn.appendChild(heightSpan);
 
-        // Assist Mode 1: Win Rate / Score Badge
-        if (coachingMode1 && coachingScores[i] !== null && !isFull) {
-          const score = coachingScores[i];
-          const scoreBadge = document.createElement('span');
-          scoreBadge.className = 'col-score-badge';
+          // Assist Mode 1: Win Rate / Score Badge
+          if (coachingMode1 && coachingScores[i] !== null && !isFull) {
+            const score = coachingScores[i];
+            const scoreBadge = document.createElement('span');
+            scoreBadge.className = 'col-score-badge';
 
-          let signStr = '';
-          if (score >= 9000) {
-            signStr = '必勝';
-            scoreBadge.classList.add('score-green');
-          } else if (score <= -9000) {
-            signStr = '必敗';
-            scoreBadge.classList.add('score-red');
-          } else {
-            let moveWinPct = Math.round(50 + (score / 3000) * 40);
-            moveWinPct = Math.max(1, Math.min(99, moveWinPct));
-            signStr = `${moveWinPct}%`;
-
-            if (moveWinPct >= 60) {
+            let signStr = '';
+            if (score >= 9000) {
+              signStr = '必勝';
               scoreBadge.classList.add('score-green');
-            } else if (moveWinPct >= 40) {
-              scoreBadge.classList.add('score-yellow');
-            } else {
+            } else if (score <= -9000) {
+              signStr = '必敗';
               scoreBadge.classList.add('score-red');
+            } else {
+              let moveWinPct = Math.round(50 + (score / 3000) * 40);
+              moveWinPct = Math.max(1, Math.min(99, moveWinPct));
+              signStr = `${moveWinPct}%`;
+
+              if (moveWinPct >= 60) {
+                scoreBadge.classList.add('score-green');
+              } else if (moveWinPct >= 40) {
+                scoreBadge.classList.add('score-yellow');
+              } else {
+                scoreBadge.classList.add('score-red');
+              }
             }
+
+            scoreBadge.textContent = signStr;
+            btn.appendChild(scoreBadge);
           }
 
-          scoreBadge.textContent = signStr;
-          btn.appendChild(scoreBadge);
-        }
+          // Assist Mode 2: Tactical Tag Badge
+          if (coachingMode2 && colTactics[i] !== null && !isFull) {
+            const tac = colTactics[i];
+            const tacBadge = document.createElement('span');
+            tacBadge.className = `col-score-badge ${tac.badgeClass || 'tactics-badge-reach'}`;
+            tacBadge.textContent = tac.shortLabel;
+            btn.appendChild(tacBadge);
+          }
 
-        // Assist Mode 2: Tactical Tag Badge
-        if (coachingMode2 && colTactics[i] !== null && !isFull) {
-          const tac = colTactics[i];
-          const tacBadge = document.createElement('span');
-          tacBadge.className = `col-score-badge ${tac.badgeClass || 'tactics-badge-reach'}`;
-          tacBadge.textContent = tac.shortLabel;
-          btn.appendChild(tacBadge);
+          selector.appendChild(btn);
         }
-
-        selector.appendChild(btn);
       }
 
       // Render Move History
