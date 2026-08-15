@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>立体四目並べ３D AI完全攻略・特訓マスターガイド ＆ 必勝Tips集</title>
+  <title>立体四目並べ３D AI完全攻略・特訓ガイド【ジュニア版・8さい〜】</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800;900&family=Yusei+Magic&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Yusei+Magic&display=swap');
 
     :root {
       --primary: #0284c7;
@@ -17,7 +17,7 @@
       --bg-light: #f0fdfa;
       --card-bg: #ffffff;
       --text-dark: #0f172a;
-      --text-muted: #64748b;
+      --text-muted: #475569;
     }
 
     * {
@@ -27,7 +27,7 @@
     }
 
     body {
-      font-family: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', sans-serif;
+      font-family: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', 'Meiryo', sans-serif;
       background: #e2e8f0;
       color: var(--text-dark);
       display: flex;
@@ -54,7 +54,7 @@
       border: none;
       padding: 9px 18px;
       border-radius: 9999px;
-      font-size: 14px;
+      font-size: 14.5px;
       font-weight: 800;
       cursor: pointer;
       display: inline-flex;
@@ -91,7 +91,7 @@
       background: #ffffff;
       padding: 6mm 8mm 5mm 8mm;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-      border-radius: 6px;
+      border-radius: 8px;
       position: relative;
       overflow: hidden;
       display: flex;
@@ -125,7 +125,7 @@
     .header-banner {
       position: relative;
       z-index: 1;
-      background: linear-gradient(135deg, #0f172a 0%, #0369a1 50%, #0284c7 100%);
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 60%, #0f172a 100%);
       border-radius: 10px;
       padding: 8.5px 16px;
       color: #ffffff;
@@ -142,9 +142,9 @@
     }
 
     .badge-icon {
-      background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
-      color: #ffffff;
-      font-size: 21px;
+      background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+      color: #000000;
+      font-size: 22px;
       font-weight: 900;
       width: 44px;
       height: 44px;
@@ -153,38 +153,38 @@
       align-items: center;
       justify-content: center;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-      border: 1.5px solid #7dd3fc;
+      border: 2px solid #fef08a;
     }
 
     .title-area h1 {
-      font-size: 21px;
+      font-size: 20px;
       font-weight: 900;
       letter-spacing: 0.5px;
       line-height: 1.2;
       color: #ffffff;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      text-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
 
     .title-area p {
       font-size: 12.8px;
       font-weight: 800;
       color: #bae6fd;
-      margin-top: 2.5px;
+      margin-top: 2px;
       display: flex;
       align-items: center;
       gap: 6px;
     }
 
     .target-pill {
-      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-      color: #ffffff;
-      padding: 5px 13px;
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: #000000;
+      padding: 5px 14px;
       border-radius: 9999px;
-      font-size: 13px;
+      font-size: 13.5px;
       font-weight: 900;
-      border: 1.5px solid #fde68a;
+      border: 2px solid #fef08a;
       white-space: nowrap;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
       display: flex;
       align-items: center;
       gap: 5px;
@@ -221,12 +221,12 @@
     }
 
     .step-num {
-      width: 23px;
-      height: 23px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       color: #ffffff;
       font-weight: 900;
-      font-size: 12.5px;
+      font-size: 13px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -246,14 +246,14 @@
     }
 
     .section-subtitle {
-      font-size: 11.5px;
+      font-size: 12px;
       font-weight: 800;
       color: var(--text-muted);
       margin-left: auto;
       white-space: nowrap;
     }
 
-    /* STEP 1: Game Flow & Settings (ゲーム開始フロー) */
+    /* STEP 1: Game Flow (ゲーム開始フロー) */
     .flow-steps-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -287,7 +287,7 @@
     }
 
     .flow-tag {
-      font-size: 11.2px;
+      font-size: 11.5px;
       font-weight: 900;
       padding: 2px 6px;
       border-radius: 4px;
@@ -300,7 +300,7 @@
     .flow-card:not(.accent-start):not(.accent-battle) .flow-tag { background: #64748b; color: #fff; }
 
     .flow-title {
-      font-size: 13.2px;
+      font-size: 13.5px;
       font-weight: 900;
       color: #0f172a;
       line-height: 1.25;
@@ -308,13 +308,13 @@
     }
 
     .flow-desc {
-      font-size: 11.2px;
+      font-size: 11.5px;
       font-weight: 700;
-      color: #475569;
+      color: #334155;
       line-height: 1.35;
     }
 
-    /* STEP 2: Rules & Winning (4 in a row) */
+    /* STEP 2: Rules (勝ちかた・4つならべよう) */
     .rules-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -339,7 +339,7 @@
     }
 
     .rule-tag {
-      font-size: 12.5px;
+      font-size: 12.8px;
       font-weight: 900;
       color: #0369a1;
       margin-bottom: 2px;
@@ -350,7 +350,7 @@
     }
 
     .visual-board-mini {
-      width: 58px;
+      width: 60px;
       height: 38px;
       background: #0f172a;
       border-radius: 5px;
@@ -363,9 +363,9 @@
     }
 
     .rule-desc {
-      font-size: 11px;
+      font-size: 11.5px;
       font-weight: 700;
-      color: #475569;
+      color: #334155;
       line-height: 1.3;
     }
 
@@ -394,7 +394,7 @@
       position: absolute;
     }
 
-    /* STEP 3: Controls & Stage Navigation */
+    /* STEP 3: Controls (ゆびさき操作) */
     .control-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -412,9 +412,9 @@
     }
 
     .control-icon {
-      font-size: 19px;
-      min-width: 30px;
-      height: 30px;
+      font-size: 20px;
+      min-width: 32px;
+      height: 32px;
       background: #ffffff;
       border-radius: 6px;
       display: flex;
@@ -426,20 +426,20 @@
     }
 
     .control-text h4 {
-      font-size: 12.8px;
+      font-size: 13px;
       font-weight: 900;
       color: #0369a1;
       margin-bottom: 1.5px;
     }
 
     .control-text p {
-      font-size: 11px;
+      font-size: 11.5px;
       color: #334155;
       font-weight: 700;
       line-height: 1.3;
     }
 
-    /* STEP 4: Master Level Grand Tactics (日本代表級・極限奥義) */
+    /* STEP 4: Tactics (AIに勝つ ひみつのワザ) */
     .master-tactics-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -462,16 +462,16 @@
       gap: 2px;
       background: #d97706;
       color: #ffffff;
-      font-size: 10.5px;
+      font-size: 11px;
       font-weight: 900;
-      padding: 2px 6px;
+      padding: 2px 7px;
       border-radius: 9999px;
       margin-bottom: 3px;
       align-self: flex-start;
     }
 
     .tactic-title {
-      font-size: 12.6px;
+      font-size: 13px;
       font-weight: 900;
       color: #78350f;
       margin-bottom: 2.5px;
@@ -479,7 +479,7 @@
     }
 
     .tactic-body {
-      font-size: 11px;
+      font-size: 11.2px;
       font-weight: 700;
       color: #92400e;
       line-height: 1.35;
@@ -490,7 +490,7 @@
       font-weight: 900;
     }
 
-    /* STEP 5: Features Showcase (機能紹介) */
+    /* STEP 5: Features (べんりな機能) */
     .features-showcase-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -521,7 +521,7 @@
     }
 
     .feature-showcase-card h4 {
-      font-size: 12px;
+      font-size: 12.5px;
       font-weight: 900;
       color: #6b21a8;
       line-height: 1.2;
@@ -529,7 +529,7 @@
     }
 
     .feature-showcase-card p {
-      font-size: 10.8px;
+      font-size: 11px;
       font-weight: 700;
       color: #581c87;
       line-height: 1.3;
@@ -586,7 +586,7 @@
     }
 
     .qr-text-info .qr-label {
-      font-size: 11.2px;
+      font-size: 11.5px;
       font-weight: 900;
       color: #38bdf8;
       display: flex;
@@ -595,7 +595,7 @@
     }
 
     .qr-text-info .qr-url {
-      font-size: 10px;
+      font-size: 10.2px;
       font-weight: 800;
       color: #f1f5f9;
       letter-spacing: 0.2px;
@@ -611,7 +611,7 @@
     }
 
     .footer-right-message .app-badge-title {
-      font-size: 12.8px;
+      font-size: 13px;
       font-weight: 900;
       color: #fbbf24;
       display: flex;
@@ -620,13 +620,13 @@
     }
 
     .footer-right-message .motto-text {
-      font-size: 10.5px;
+      font-size: 10.8px;
       font-weight: 700;
       color: #94a3b8;
     }
 
     .footer-credits-line {
-      font-size: 10.2px;
+      font-size: 10.5px;
       font-weight: 800;
       color: #38bdf8;
       letter-spacing: 0.3px;
@@ -675,6 +675,9 @@
       🎮 ゲームにもどる
     </a>
     <div style="display: flex; gap: 8px;">
+      <a href="./strategy_guide.html" class="btn-action btn-back" style="border-color: #38bdf8; color: #0284c7;">
+        ⚔️ 通常版（マスター向け）を見る
+      </a>
       <button type="button" class="btn-action" onclick="window.print()" title="A4用紙1枚にきれいに印刷またはPDF保存できます">
         🖨️ A4 PDFとして保存 / 印刷
       </button>
@@ -689,85 +692,85 @@
     <!-- Header -->
     <header class="header-banner">
       <div class="header-left">
-        <div class="badge-icon">4³</div>
+        <div class="badge-icon">3D</div>
         <div class="title-area">
-          <h1>立体四目並べ３D AI完全攻略・特訓マスターガイド</h1>
-          <p>★ ゲーム開始フロー ＆ 空間認識力を極める極限奥義 ＆ 攻略Tips集 ★</p>
+          <h1>立体四目並べ３D AI完全攻略・特訓ガイド【ジュニア版】</h1>
+          <p>★ 8さいからの ３Dくうかんマスター ＆ AIに勝つ ひみつのワザ集 ★</p>
         </div>
       </div>
       <div class="target-pill">
-        ⚔️ 空間戦略マスター
+        🌟 8さい〜小学生むけ
       </div>
     </header>
 
     <!-- Main Content Flow -->
     <main class="content-area">
 
-      <!-- STEP 1: ゲーム開始フロー（最初にゲーム設定を行う ➔ 対戦開始） -->
+      <!-- STEP 1: ゲームスタートの手順 -->
       <section class="section-card" style="background: #f8fafc; border-color: #cbd5e1;">
         <div class="section-head">
           <div class="step-num indigo">1</div>
-          <h2 class="section-title">対戦スタートの手順（最初にゲーム設定 ➔ 対戦開始へ！）</h2>
-          <span class="section-subtitle">迷わずスタートできる 4ステップ・フロー</span>
+          <h2 class="section-title">ゲームスタートの じゅんび（かんたん４ステップ！）</h2>
+          <span class="section-subtitle">せっていを えらんで 対戦をはじめよう！</span>
         </div>
 
         <div class="flow-steps-grid">
           <!-- Flow 1: 設定画面 -->
           <div class="flow-card accent-start">
             <div class="flow-header">
-              <span class="flow-tag">STEP 1</span>
-              <span style="font-size: 11px;">⚙️</span>
+              <span class="flow-tag">ステップ 1</span>
+              <span style="font-size: 12px;">⚙️</span>
             </div>
-            <div class="flow-title">① ゲーム設定を行う</div>
+            <div class="flow-title">① せっていを えらぼう</div>
             <p class="flow-desc">
-              まずは<strong>「設定」パネル</strong>でニックネーム、手番（先手/後手）、AIの難易度（初級〜マスター）、考慮時間を選択！
+              ニックネーム、じぶんの番（先手/後手）、AIのつよさ（初級〜マスター）をえらぼう！
             </p>
           </div>
 
           <!-- Flow 2: アシストとテーマ -->
           <div class="flow-card">
             <div class="flow-header">
-              <span class="flow-tag">STEP 2</span>
-              <span style="font-size: 11px;">🎨</span>
+              <span class="flow-tag">ステップ 2</span>
+              <span style="font-size: 12px;">🎨</span>
             </div>
-            <div class="flow-title">② アシスト＆色選択</div>
+            <div class="flow-title">② 玉の色をえらぼう</div>
             <p class="flow-desc">
-              勝率予測や戦術アラートのON/OFF、見やすい球のカラーテーマ（黒×白やシアン×橙など）をお好みで設定！
+              AIの勝ちやすさメーターや、大すきな玉の色（黒×白やシアン×橙など）をセット！
             </p>
           </div>
 
           <!-- Flow 3: 対戦スタートボタン -->
           <div class="flow-card accent-battle">
             <div class="flow-header">
-              <span class="flow-tag">STEP 3</span>
-              <span style="font-size: 11px;">⚔️</span>
+              <span class="flow-tag">ステップ 3</span>
+              <span style="font-size: 12px;">⚔️</span>
             </div>
             <div class="flow-title">③ 対戦スタート！</div>
             <p class="flow-desc">
-              緑色の<strong>「⚔️ この設定で対戦スタート！」</strong>ボタンを押すと、３D対戦盤面がフルオープン！
+              みどり色の<strong>「⚔️ この設定で対戦スタート！」</strong>をおすと３D盤がひろがるよ！
             </p>
           </div>
 
           <!-- Flow 4: いつでも再設定可能 -->
           <div class="flow-card">
             <div class="flow-header">
-              <span class="flow-tag">STEP 4</span>
-              <span style="font-size: 11px;">🔄</span>
+              <span class="flow-tag">ステップ 4</span>
+              <span style="font-size: 12px;">🔄</span>
             </div>
-            <div class="flow-title">④ 対戦中の自由操作</div>
+            <div class="flow-title">④ 何度でもチャレンジ</div>
             <p class="flow-desc">
-              対戦中いつでも「待った」「盤面リセット」「設定変更」が可能！何度でも条件を変えて挑戦できます！
+              いつでも「待った」で1手もどしたり、せっていを変えてなんどでも挑戦できるよ！
             </p>
           </div>
         </div>
       </section>
 
-      <!-- STEP 2: 勝利条件と4つのライン -->
+      <!-- STEP 2: 勝ちかたルール・4つならべよう -->
       <section class="section-card">
         <div class="section-head">
           <div class="step-num blue">2</div>
-          <h2 class="section-title">勝利条件と４つの並び（全76本の勝利ライン）</h2>
-          <span class="section-subtitle">じぶんの色を ４つ まっすぐ並べたほうが勝利！</span>
+          <h2 class="section-title">勝ちかたのルール（４つ まっすぐならべたら勝ち！）</h2>
+          <span class="section-subtitle">たて・よこ・ななめ！ ぜんぶで76本のならびがあるよ！</span>
         </div>
 
         <div class="rules-grid">
@@ -782,7 +785,7 @@
                 <div class="mini-ball"></div>
               </div>
             </div>
-            <p class="rule-desc">おなじ段（フロア）で<br>まっすぐ横に並べる！</p>
+            <p class="rule-desc">おなじ高さ（フロア）で<br>まっすぐ横にならべる！</p>
           </div>
 
           <!-- Pattern 2: 縦 (たて) -->
@@ -796,12 +799,12 @@
                 <div class="mini-ball"></div>
               </div>
             </div>
-            <p class="rule-desc">１本の支柱（ぼう）に<br>下から上へ４つ積む！</p>
+            <p class="rule-desc">1ぽんの ぼう（支柱）に<br>下から上へ4つつむ！</p>
           </div>
 
           <!-- Pattern 3: 斜め (ななめ) -->
           <div class="rule-box">
-            <div class="rule-tag">③ 平面の ななめ</div>
+            <div class="rule-tag">③ 平らな ななめ</div>
             <div class="visual-board-mini">
               <div class="mini-diag">
                 <div class="mini-ball" style="top: 2px; left: 2px;"></div>
@@ -810,7 +813,7 @@
                 <div class="mini-ball" style="top: 20px; left: 23px;"></div>
               </div>
             </div>
-            <p class="rule-desc">おなじフロアや壁で<br>クロス（斜め）に並べる！</p>
+            <p class="rule-desc">おなじフロアや壁で<br>クロス（ななめ）ならび！</p>
           </div>
 
           <!-- Pattern 4: 3D斜め (立体のななめ) -->
@@ -824,99 +827,99 @@
                 <div class="mini-ball gold" style="top: 17px; left: 23px;"></div>
               </div>
             </div>
-            <p class="rule-desc"><span style="color:#059669; font-weight:900;">３Dの必殺ライン！</span><br>空間をかけぬける４つ！</p>
+            <p class="rule-desc"><span style="color:#059669; font-weight:900;">３Dのひっさつ技！</span><br>くうかんを かけぬける！</p>
           </div>
         </div>
       </section>
 
-      <!-- STEP 3: 直感3D操作で盤面を制する -->
+      <!-- STEP 3: 指先でかんたん３Dそうさ -->
       <section class="section-card">
         <div class="section-head">
           <div class="step-num green">3</div>
-          <h2 class="section-title">直感３D操作で盤面を制する（基本アクション）</h2>
-          <span class="section-subtitle">指先で自在に視点を変えて 死角をなくそう！</span>
+          <h2 class="section-title">指先でかんたん３Dそうさ（基本アクション）</h2>
+          <span class="section-subtitle">ぐるぐる回して うしろの玉もチェックしよう！</span>
         </div>
 
         <div class="control-grid">
           <div class="control-card">
             <div class="control-icon">👆</div>
             <div class="control-text">
-              <h4>視点回転（ドラッグ）</h4>
-              <p>スワイプで360度ぐるぐる回転！死角の並びを発見！</p>
+              <h4>ぐるぐる回す（ドラッグ）</h4>
+              <p>ゆびでスワイプして360度まわそう！かくれたならびを発見！</p>
             </div>
           </div>
 
           <div class="control-card">
             <div class="control-icon">🎯</div>
             <div class="control-text">
-              <h4>玉を落とす（着手）</h4>
-              <p>落としたい支柱をポンッとタップ！狙った位置へ着手！</p>
+              <h4>玉をおとす（タップ）</h4>
+              <p>入れたい ぼう（支柱）をポンッとタップ！ねらった場所におちるよ！</p>
             </div>
           </div>
 
           <div class="control-card">
             <div class="control-icon">🔍</div>
             <div class="control-text">
-              <h4>拡大・縮小（ズーム）</h4>
-              <p>「＋」「−」ボタンや２本指ピンチで盤面を自由ズーム！</p>
+              <h4>大きく・小さく（ズーム）</h4>
+              <p>「＋」「−」ボタンでズーム！細かいならびもハッキリ見やすい！</p>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- STEP 4: 日本代表級が唸る空間戦略マスターの4大極限奥義 -->
+      <!-- STEP 4: AIに勝つ！4つのひみつワザ -->
       <section class="section-card" style="background: #fffdf5; border-color: #fde68a;">
         <div class="section-head">
           <div class="step-num gold">4</div>
-          <h2 class="section-title" style="color: #92400e;">日本代表級が唸る！ 空間戦略マスター ４大極限奥義</h2>
-          <span class="section-subtitle" style="color: #b45309;">「マスター」AIの思考ルーチンに完全同期！</span>
+          <h2 class="section-title" style="color: #92400e;">AIに勝つ！ ３Dくうかんの ４大ひみつワザ</h2>
+          <span class="section-subtitle" style="color: #b45309;">このワザをおぼえると AIにも勝てるようになるよ！</span>
         </div>
 
         <div class="master-tactics-grid">
-          <!-- Tactic 1: パリティ理論 -->
+          <!-- Tactic 1: まんなかをねらえ -->
           <div class="tactic-box">
-            <div class="tactic-tag">奥義 ①</div>
-            <div class="tactic-title">パリティ（偶奇段）支配理論</div>
+            <div class="tactic-tag">ひみつ ①</div>
+            <div class="tactic-title">中央（まんなか）をねらえ！</div>
             <p class="tactic-body">
-              重力のある4段空間では、<span class="tactic-highlight">先手は奇数段（1・3段）</span>、<span class="tactic-highlight">後手は偶数段（2・4段）</span>でリーチを作ると主導権！相手に踏み台を置かせる段位トラップ！
+              中央の4本のぼうは、<span class="tactic-highlight">たて・よこ・ななめに玉がつながりやすい</span>最強の場所！さいしょは中央からせめよう！
             </p>
           </div>
 
-          <!-- Tactic 2: 3Dマルチフォーク -->
+          <!-- Tactic 2: ダブルリーチ -->
           <div class="tactic-box">
-            <div class="tactic-tag">奥義 ②</div>
-            <div class="tactic-title">3Dマルチフォーク（複合Wリーチ）</div>
+            <div class="tactic-tag">ひみつ ②</div>
+            <div class="tactic-title">ダブルリーチ（２つの王手）</div>
             <p class="tactic-body">
-              1手の着手で「平面斜め」と「立体主対角線」など<span class="tactic-highlight">異なる次元の2本以上を同時リーチ</span>！相手は1箇所しか防げず絶対防御不能の詰み確定！
+              1回置くだけで<span class="tactic-highlight">2本のならびが同時にリーチ</span>になる形を作ろう！AIは1つしか止められないから勝ち決定！
             </p>
           </div>
 
-          <!-- Tactic 3: 地雷マスとツークツワンク -->
+          <!-- Tactic 3: じぶんの段トラップ -->
           <div class="tactic-box">
-            <div class="tactic-tag">奥義 ③</div>
-            <div class="tactic-title">地雷マス ＆ ツークツワンク誘導</div>
+            <div class="tactic-tag">ひみつ ③</div>
+            <div class="tactic-title">じぶんの段をキープ作戦</div>
             <p class="tactic-body">
-              空中に自陣の勝ちマスがある場合、その直下のマスは相手にとって<span class="tactic-highlight">「置いたら即敗北の地雷マス」</span>。安全な支柱を奪い相手に地雷を踏ませろ！
+              先手（先ばん）なら<span class="tactic-highlight">1だん目・3だん目</span>、後手なら<span class="tactic-highlight">2だん目・4だん目</span>に玉をためると相手が土台を作ってくれるよ！
             </p>
           </div>
 
-          <!-- Tactic 4: 4大主対角線 & コア8マス -->
+          <!-- Tactic 4: 立体ななめをねらえ -->
           <div class="tactic-box">
-            <div class="tactic-tag">奥義 ④</div>
-            <div class="tactic-title">4大主対角線 ＆ コア8マスの排他制御</div>
+            <div class="tactic-tag">ひみつ ④</div>
+            <div class="tactic-title">３Dの「立体のななめ」！</div>
             <p class="tactic-body">
-              立方体の頂点を貫く4本の主対角線と中央4支柱の「中心8マス」は全76本中最大の交差連結力を持つ！<span class="tactic-highlight">序盤のコア排他支配</span>が勝率を極大化！
+              はしから反対のはしへ<span class="tactic-highlight">空間をとびこえる立体ななめ</span>は、見落としやすい大チャンス！まわして見つけよう！
             </p>
           </div>
         </div>
       </section>
 
-      <!-- STEP 5: 実力向上を支える充実機能紹介 -->
+      <!-- STEP 5: 実力アップの べんりな機能紹介 -->
       <section class="section-card" style="background: #faf5ff; border-color: #e9d5ff;">
         <div class="section-head">
           <div class="step-num purple">5</div>
-          <h2 class="section-title" style="color: #6b21a8;">実力向上を支える 充実の機能紹介</h2>
-          <span class="section-subtitle" style="color: #7e22ce;">３Dならではの多彩なサポート機能をフル活用！</span>
+          <h2 class="section-title" style="color: #6b21a8;">実力アップ！ べんりな機能のしょうかい</h2>
+          <span class="section-subtitle" style="color: #7e22ce;">いろんなサポートを使って つよくなろう！</span>
         </div>
 
         <div class="features-showcase-grid">
@@ -925,7 +928,7 @@
             <div class="feature-icon-mini">🔄</div>
             <div>
               <h4>ぐるぐる360°回転</h4>
-              <p>ドラッグやスワイプで死角ゼロ！あらゆる角度から戦況を観察！</p>
+              <p>ドラッグして死角ゼロ！いろんな角度から玉をさがそう！</p>
             </div>
           </div>
 
@@ -933,8 +936,8 @@
           <div class="feature-showcase-card">
             <div class="feature-icon-mini">📊</div>
             <div>
-              <h4>リアルタイム形勢グラフ</h4>
-              <p>一目で有利・不利がわかる勝率予測バーゲージで形勢判断力を強化！</p>
+              <h4>勝ちやすさメーター</h4>
+              <p>いまどっちが有利かひと目でわかる！勝率バーで形勢チェック！</p>
             </div>
           </div>
 
@@ -942,8 +945,8 @@
           <div class="feature-showcase-card">
             <div class="feature-icon-mini">↩️</div>
             <div>
-              <h4>「待った（1手戻す）」</h4>
-              <p>失着やAIの強力な反撃を戻して再考！深層戦術を徹底的に研究！</p>
+              <h4>「待った」ボタン</h4>
+              <p>まちがえて置いても大丈夫！1手もどして作戦を考えなおせるよ！</p>
             </div>
           </div>
 
@@ -951,8 +954,8 @@
           <div class="feature-showcase-card">
             <div class="feature-icon-mini">🏆</div>
             <div>
-              <h4>AIに勝利した勇者たち</h4>
-              <p>マスターAIを撃破すると直近30名の勇者の殿堂にあなたの名が永久刻印！</p>
+              <h4>ゆうしゃの殿堂</h4>
+              <p>AIに勝つと、君のニックネームが直近30名の勇者として記録されるよ！</p>
             </div>
           </div>
         </div>
@@ -982,7 +985,7 @@
           <span style="color:#38bdf8;">AIに勝つぞ～</span>
         </div>
         <div class="motto-text">
-          空間認識力 ＆ 先読み思考トレーニング
+          空間認識力 ＆ ひらめき思考トレーニング
         </div>
         <div class="footer-credits-line">
           <span>2026.08.14版 Version 1.00</span>
