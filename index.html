@@ -1877,6 +1877,184 @@
       pointer-events: none;
       z-index: 1005;
     }
+
+    /* Admin Dedicated Panel & Learning Center Styles */
+    .btn-admin-header {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(168, 85, 247, 0.25));
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      color: #fca5a5;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: none; /* Controlled dynamically by dev/admin URL check */
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+
+    .btn-admin-header:hover {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(168, 85, 247, 0.4));
+      color: #ffffff;
+      box-shadow: 0 0 14px rgba(239, 68, 68, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .admin-modal-card {
+      max-width: 880px;
+      width: 95%;
+      max-height: 90vh;
+      overflow-y: auto;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(239, 68, 68, 0.2);
+    }
+
+    .admin-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .admin-kpi-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .admin-kpi-label {
+      font-size: 10.5px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .admin-kpi-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: #38bdf8;
+    }
+
+    .admin-section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fbbf24;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 14px 0 8px 0;
+    }
+
+    .admin-table-wrap {
+      max-height: 240px;
+      overflow-y: auto;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11.5px;
+    }
+
+    .admin-table th {
+      background: rgba(30, 41, 59, 0.8);
+      color: #94a3b8;
+      padding: 8px 10px;
+      text-align: left;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .admin-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+    }
+
+    /* Quiet AI Strength Level Number Display (Unobtrusive numerical indicator) */
+    .quiet-ai-level {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 0 4px;
+      color: #94a3b8;
+      font-family: 'Consolas', 'Menlo', 'Monaco', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      opacity: 0.65;
+      letter-spacing: 0.5px;
+      cursor: default;
+      user-select: none;
+      transition: opacity 0.2s;
+    }
+
+    .quiet-ai-level:hover {
+      opacity: 1;
+      color: #38bdf8;
+    }
+
+    /* AI Simulation & Automated Training Panels */
+    .sim-panel-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .sim-panel-box.server {
+      border-color: rgba(168, 85, 247, 0.35);
+      background: rgba(88, 28, 135, 0.15);
+    }
+    .sim-preset-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #e2e8f0;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .sim-preset-btn:hover, .sim-preset-btn.active {
+      background: #38bdf8;
+      border-color: #38bdf8;
+      color: #0f172a;
+    }
+    .sim-preset-btn.server:hover, .sim-preset-btn.server.active {
+      background: #a855f7;
+      border-color: #a855f7;
+      color: #ffffff;
+    }
+    .sim-progress-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .sim-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      border-radius: 4px;
+      transition: width 0.15s ease-out;
+    }
+    .sim-progress-fill.server {
+      background: linear-gradient(90deg, #a855f7, #ec4899);
+    }
   </style>
 </head>
 <body>
@@ -1890,7 +2068,10 @@
       </div>
     </div>
     <div class="header-right-group">
-      <div class="header-credit-badge">2026.08.14_1.00版、Presented by Portofino</div>
+      <div class="header-credit-badge">
+        2026.08.14_1.00版、Presented by Portofino
+        <span id="aiMaxRatingDisplay" class="quiet-ai-level" title="AI最高能力値 (学習進度レーティング)">2000</span>
+      </div>
       <div class="header-access-counter" id="headerAccessCounter" title="全プレイヤーの総合アクセス数（リアルタイム集計）" onclick="refreshAccessCounter()">
         <div class="counter-pulse-dot"></div>
         <span class="counter-label">ACCESS</span>
@@ -1905,6 +2086,9 @@
       </button>
       <button type="button" class="btn-heroes" id="btnShowHeroesHeader" onclick="openHeroesModal()" title="AIに勝利した勇者たちの一覧を見る">
         🏆 <span>AIに勝利した勇者たち</span>
+      </button>
+      <button type="button" class="btn-admin-header" id="btnAdminPanelHeader" onclick="openAdminModal()" title="管理者専用AI学習・棋譜解析センター">
+        🧠 <span>管理者・AI学習</span>
       </button>
       <a id="docDownloadBtn" href="/developer_docs.txt" download="立体四目並べ3D_開発者ドキュメント.txt" class="doc-download-btn" title="開発者ドキュメント(.txt)をダウンロード">
         📄 <span>仕様書(.txt)</span>
@@ -2254,7 +2438,7 @@
             🏆 AIに勝利した勇者たち
           </h2>
           <p id="heroesModalSubInfo" style="font-size:11.5px; color:#94a3b8; margin-top:3px;">
-            見事AIを打ち破った直近30名の勝者栄誉殿堂（最新順）
+            見事AIを打ち破った直近30名の勝者リスト（最新順）
           </p>
         </div>
         <button type="button" onclick="closeHeroesModal()" style="background:none; border:none; color:#9ca3af; font-size:20px; cursor:pointer; padding:4px;">✕</button>
@@ -2325,6 +2509,183 @@
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
         <span style="font-size:10.5px; color:#94a3b8;">💡 ブラウザの「印刷」画面で「PDFに保存」を選択するとA4用紙1枚の綺麗なPDFとしてダウンロードできます。</span>
         <button type="button" class="modal-btn-secondary" onclick="closeKidsGuideModal()" style="padding:6px 16px;">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑧ 管理者専用・AI学習＆撃破棋譜解析センター モーダル -->
+  <div class="modal-overlay" id="adminModal">
+    <div class="modal-card admin-modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid rgba(239,68,68,0.3); padding-bottom:10px;">
+        <div>
+          <h2 style="font-size:17.5px; font-weight:800; color:#f87171; display:flex; align-items:center; gap:8px;">
+            🧠 管理者専用・AI学習 ＆ 撃破棋譜解析センター
+          </h2>
+          <p style="font-size:11px; color:#94a3b8; margin-top:2px;">
+            上級・マスターAIを破った強豪プレイヤーの勝利着手手順を分析し、AIを自動進化させます
+          </p>
+        </div>
+        <button type="button" onclick="closeAdminModal()" style="background:none; border:none; color:#9ca3af; font-size:22px; cursor:pointer; padding:2px 6px;">✕</button>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="admin-kpi-grid">
+        <div class="admin-kpi-card">
+          <span class="admin-kpi-label">AI最高能力値 (現在レーティング)</span>
+          <span class="admin-kpi-val" id="adminKpiAiRating" style="color:#f59e0b;">2000</span>
+        </div>
+        <div class="admin-kpi-card">
+          <span class="admin-kpi-label">蓄積された撃破棋譜数</span>
+          <span class="admin-kpi-val" id="adminKpiTotalGames">0局</span>
+        </div>
+        <div class="admin-kpi-card">
+          <span class="admin-kpi-label">AI学習済み定石・トラップ数</span>
+          <span class="admin-kpi-val" id="adminKpiLearnedPatterns">0手</span>
+        </div>
+        <div class="admin-kpi-card">
+          <span class="admin-kpi-label">AI最新学習日時</span>
+          <span class="admin-kpi-val" id="adminKpiLastTrained" style="font-size:13px;">未実行</span>
+        </div>
+        <div class="admin-kpi-card">
+          <span class="admin-kpi-label">次回自動定期学習 (毎日03:00)</span>
+          <span class="admin-kpi-val" id="adminKpiNextSchedule" style="font-size:13px; color:#4ade80;">毎日 03:00 (自動)</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons for Learning -->
+      <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:8px; padding:12px; margin-top:6px; display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <div style="font-size:13px; font-weight:800; color:#ffffff;">🧠 AI学習エンジンの手動トリガー</div>
+            <div style="font-size:11px; color:#cbd5e1;">蓄積されたすべての勝利棋譜から人間の勝ち筋・立体トラップ手順を即時抽出し、AI探索ツリーに統合します。</div>
+          </div>
+          <button type="button" class="modal-btn-primary" onclick="trainAiFromStoredGames(true)" style="padding:8px 18px; font-size:12.5px; background:linear-gradient(135deg, #ef4444, #a855f7); color:#fff; box-shadow:0 0 16px rgba(239,68,68,0.4);">
+            ⚡ 蓄積棋譜をAIに即時学習させる
+          </button>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; font-size:11px;">
+          <button type="button" class="modal-btn-secondary" onclick="exportRecordedGamesJSON()" style="padding:5px 12px; font-size:11px;">
+            💾 棋譜データをJSON保存
+          </button>
+          <button type="button" class="modal-btn-secondary" onclick="triggerImportRecordedGames()" style="padding:5px 12px; font-size:11px;">
+            📥 棋譜JSONを読み込み
+          </button>
+          <input type="file" id="adminGamesImportInput" accept=".json" style="display:none;" onchange="handleImportRecordedGamesFile(event)">
+          <button type="button" class="modal-btn-secondary" onclick="resetAiLearnedData()" style="padding:5px 12px; font-size:11px; color:#fca5a5; border-color:rgba(239,68,68,0.4);">
+            🔄 学習データを初期化
+          </button>
+        </div>
+      </div>
+
+      <!-- プランA: ブラウザ内・超高速自己対局シミュレータ -->
+      <div class="sim-panel-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <div style="font-size:13px; font-weight:800; color:#38bdf8; display:flex; align-items:center; gap:6px;">
+              ⚡ プランA：ブラウザ内・超高速自己対局シミュレータ（画面描画なし）
+            </div>
+            <div style="font-size:11px; color:#94a3b8; margin-top:2px;">
+              3D描画を全カットし、メモリ上の純粋計算だけでAI(マスター)同士を高速自動対戦させて即時学習します。
+            </div>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button type="button" class="sim-preset-btn active" onclick="setLocalSimCount(1000, this)">1,000局</button>
+            <button type="button" class="sim-preset-btn" onclick="setLocalSimCount(5000, this)">5,000局</button>
+            <button type="button" class="sim-preset-btn" onclick="setLocalSimCount(10000, this)">10,000局</button>
+            <input type="number" id="localSimCountInput" value="1000" min="100" max="50000" step="100" style="width:70px; background:#0f172a; border:1px solid rgba(255,255,255,0.2); color:#fff; padding:3px 6px; border-radius:4px; font-size:11px; text-align:right;" title="対局数">
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div style="display:flex; gap:8px;">
+            <button type="button" id="btnStartLocalSim" class="modal-btn-primary" onclick="startLocalSelfPlaySimulation()" style="padding:6px 16px; font-size:12px; background:linear-gradient(135deg, #0284c7, #38bdf8); color:#0f172a; font-weight:800;">
+              ▶️ ブラウザで自己対局を開始
+            </button>
+            <button type="button" id="btnStopLocalSim" class="modal-btn-secondary" onclick="stopLocalSelfPlaySimulation()" style="padding:6px 12px; font-size:11px; display:none; color:#fca5a5; border-color:rgba(239,68,68,0.5);">
+              ⏹️ 中断
+            </button>
+          </div>
+          <div id="localSimStatsText" style="font-size:11px; color:#cbd5e1;">
+            待機中（0 / 0局）
+          </div>
+        </div>
+
+        <div class="sim-progress-track">
+          <div class="sim-progress-fill" id="localSimProgressFill"></div>
+        </div>
+      </div>
+
+      <!-- プランB: クラウドサーバー実行＆全自動進化シミュレータ (PCを閉じても継続) -->
+      <div class="sim-panel-box server">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <div style="font-size:13px; font-weight:800; color:#c084fc; display:flex; align-items:center; gap:6px;">
+              🚀 プランB：クラウドサーバー自己対局 ＆ 全自動進化（※PCを閉じても継続）
+              <span id="serverSimLiveBadge" style="font-size:9.5px; padding:2px 6px; border-radius:4px; background:rgba(34,197,94,0.2); color:#4ade80; border:1px solid rgba(34,197,94,0.4);">サーバー接続中</span>
+            </div>
+            <div style="font-size:11px; color:#cbd5e1; margin-top:2px;">
+              Cloud Runサーバー上でバックグラウンド実行。開始後にPCやブラウザを閉じても指定対局数まで学習が走り続けます。
+            </div>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button type="button" class="sim-preset-btn server active" onclick="setServerSimCount(1000, this)">1,000局</button>
+            <button type="button" class="sim-preset-btn server" onclick="setServerSimCount(5000, this)">5,000局</button>
+            <button type="button" class="sim-preset-btn server" onclick="setServerSimCount(10000, this)">10,000局</button>
+            <button type="button" class="sim-preset-btn server" onclick="setServerSimCount(50000, this)">50,000局</button>
+            <input type="number" id="serverSimCountInput" value="1000" min="100" max="100000" step="500" style="width:75px; background:#0f172a; border:1px solid rgba(255,255,255,0.2); color:#fff; padding:3px 6px; border-radius:4px; font-size:11px; text-align:right;" title="対局数">
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div style="display:flex; gap:8px;">
+            <button type="button" id="btnStartServerSim" class="modal-btn-primary" onclick="startServerSelfPlaySimulation()" style="padding:6px 16px; font-size:12px; background:linear-gradient(135deg, #9333ea, #ec4899); color:#fff; font-weight:800; box-shadow:0 0 12px rgba(168,85,247,0.4);">
+              🚀 クラウド自己対局を開始（PC放置OK）
+            </button>
+            <button type="button" id="btnStopServerSim" class="modal-btn-secondary" onclick="stopServerSelfPlaySimulation()" style="padding:6px 12px; font-size:11px; display:none; color:#fca5a5; border-color:rgba(239,68,68,0.5);">
+              ⏹️ サーバー対局を強制停止
+            </button>
+            <button type="button" class="modal-btn-secondary" onclick="syncGlobalAiModelFromServer(true)" style="padding:6px 12px; font-size:11px;">
+              ☁️ 最新AIモデルを即時同期
+            </button>
+          </div>
+          <div id="serverSimStatsText" style="font-size:11px; color:#cbd5e1;">
+            サーバー待機中
+          </div>
+        </div>
+
+        <div class="sim-progress-track">
+          <div class="sim-progress-fill server" id="serverSimProgressFill"></div>
+        </div>
+      </div>
+
+      <!-- Recorded Games List -->
+      <div class="admin-section-title">
+        📋 蓄積された上級・マスター撃破棋譜一覧
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th style="width:40px;">No.</th>
+              <th>勝者名</th>
+              <th>撃破レベル</th>
+              <th>手数</th>
+              <th>勝因ライン / 決着手</th>
+              <th>日時</th>
+              <th style="text-align:right;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="adminGamesTableBody">
+            <!-- Dynamic game logs inserted here -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-actions" style="margin-top:14px; display:flex; justify-content:space-between; flex-direction:row;">
+        <span style="font-size:11px; color:#94a3b8; align-self:center;">※この管理者パネルは開発環境または専用URL（?admin=...）のみでアクセス可能です。</span>
+        <button type="button" class="modal-btn-secondary" onclick="closeAdminModal()" style="padding:6px 20px;">
           閉じる
         </button>
       </div>
@@ -2442,7 +2803,19 @@
 
     function getOpeningBookMove(b, h) {
       const placed = history.length;
-      if (placed >= 4) return -1; // Only for first 4 moves
+
+      // 1. Check Learned Opening Patterns from human champion victories
+      try {
+        const boardKey = b.slice(0, 64).join('');
+        if (learnedOpeningBook && learnedOpeningBook[boardKey] !== undefined) {
+          const learnedCol = learnedOpeningBook[boardKey];
+          if (h[learnedCol] < 4) {
+            return learnedCol;
+          }
+        }
+      } catch (e) {}
+
+      if (placed >= 4) return -1; // Standard book only for first 4 moves
 
       // Master opening book
       if (placed === 0) {
@@ -2511,8 +2884,12 @@
     };
 
     // -------------------------------------------------------------
-    // 2. Global State Variables
+    // 2. Global State Variables & Persistent Preferences Engine
     // -------------------------------------------------------------
+    const PREFS_STORAGE_KEY = '3d_connect4_user_prefs_v1';
+    const STORED_GAMES_KEY = '3d_connect4_ai_victory_games_v1';
+    const LEARNED_PATTERNS_KEY = '3d_connect4_ai_learned_weights_v1';
+
     let board = new Array(64).fill(0); // 0: empty, 1: P1, 2: P2
     let heights = new Array(16).fill(0); // height level 0..4 for each col 0..15
     let currentTurn = 1; // 1 or 2
@@ -2539,6 +2916,111 @@
     let colTactics = new Array(16).fill(null);
     let tacticsSummary = { alerts: [], icon: '⚡', type: 'info' };
     let isAiThinking = false;
+
+    // AI Learned Knowledge Base (Opening patterns & defensive traps learned from champions)
+    let learnedOpeningBook = {}; // hash -> best Move
+    let learnedPositionBonuses = {}; // index or coordinate key -> score delta
+    let aiLearningMetadata = { lastTrainedAt: null, totalGamesTrained: 0, learnedCount: 0 };
+
+    // Persistent Settings: Save and Restore all choices smoothly (100% safe, no popups)
+    function saveUserPreferences() {
+      try {
+        const prefs = {
+          nickname: playerNickname,
+          order: humanPlayer,
+          difficulty: difficulty,
+          customDepth: customDepth,
+          customTimeLimitSec: customTimeLimitSec,
+          coaching1: coachingMode1,
+          coaching2: coachingMode2,
+          theme: currentThemeKey,
+          timeLimit: humanTimeLimitSec
+        };
+        localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
+      } catch (e) {}
+    }
+
+    function loadUserPreferences() {
+      try {
+        const raw = localStorage.getItem(PREFS_STORAGE_KEY);
+        if (!raw) return;
+        const prefs = JSON.parse(raw);
+        if (prefs && typeof prefs === 'object') {
+          if (typeof prefs.nickname === 'string') playerNickname = prefs.nickname;
+          if (prefs.order === 1 || prefs.order === 2) {
+            humanPlayer = prefs.order;
+            aiPlayer = (humanPlayer === 1) ? 2 : 1;
+          }
+          if (['easy', 'medium', 'hard', 'master', 'custom'].includes(prefs.difficulty)) {
+            difficulty = prefs.difficulty;
+          }
+          if (typeof prefs.customDepth === 'number') customDepth = prefs.customDepth;
+          if (typeof prefs.customTimeLimitSec === 'number') customTimeLimitSec = prefs.customTimeLimitSec;
+          if (typeof prefs.coaching1 === 'boolean') coachingMode1 = prefs.coaching1;
+          if (typeof prefs.coaching2 === 'boolean') coachingMode2 = prefs.coaching2;
+          if (COLOR_THEMES[prefs.theme]) currentThemeKey = prefs.theme;
+          if (typeof prefs.timeLimit === 'number') humanTimeLimitSec = prefs.timeLimit;
+        }
+      } catch (e) {}
+    }
+
+    function syncUIFromLoadedPreferences() {
+      // Sync Nickname
+      const nickInput = document.getElementById('nicknameInput');
+      if (nickInput) {
+        nickInput.value = playerNickname;
+        handleNicknameChange(playerNickname, false);
+      }
+
+      // Sync Order
+      const btnHuman = document.getElementById('btnHumanFirst');
+      const btnAi = document.getElementById('btnAIFirst');
+      if (btnHuman && btnAi) {
+        btnHuman.classList.toggle('active', humanPlayer === 1);
+        btnAi.classList.toggle('active', humanPlayer === 2);
+      }
+
+      // Sync Difficulty
+      const diffBtns = {
+        easy: document.getElementById('btnLevelEasy'),
+        medium: document.getElementById('btnLevelMedium'),
+        hard: document.getElementById('btnLevelHard'),
+        master: document.getElementById('btnLevelMaster'),
+        custom: document.getElementById('btnLevelCustom')
+      };
+      Object.keys(diffBtns).forEach(k => {
+        if (diffBtns[k]) diffBtns[k].classList.toggle('active', difficulty === k);
+      });
+      const customPanel = document.getElementById('customDiffPanel');
+      if (customPanel) {
+        customPanel.style.display = (difficulty === 'custom') ? 'flex' : 'none';
+      }
+      const sliderDepth = document.getElementById('customDepthSlider');
+      const sliderTime = document.getElementById('customTimeSlider');
+      if (sliderDepth) sliderDepth.value = customDepth;
+      if (sliderTime) sliderTime.value = customTimeLimitSec;
+      const bDepth = document.getElementById('customDepthBadge');
+      const bTime = document.getElementById('customTimeBadge');
+      if (bDepth) bDepth.textContent = `${customDepth}手`;
+      if (bTime) bTime.textContent = `${customTimeLimitSec.toFixed(1)}秒`;
+
+      // Sync Assist Switches
+      const toggle1 = document.getElementById('coachingToggle1');
+      const toggle2 = document.getElementById('coachingToggle2');
+      if (toggle1) toggle1.checked = coachingMode1;
+      if (toggle2) toggle2.checked = coachingMode2;
+
+      // Sync Time Limit Select
+      const selectTime = document.getElementById('timeLimitSelect');
+      if (selectTime) selectTime.value = String(humanTimeLimitSec);
+
+      // Sync Theme
+      const selectTheme = document.getElementById('themeSelect');
+      if (selectTheme) selectTheme.value = currentThemeKey;
+      changeTheme(currentThemeKey, false);
+
+      updateSetupSummary();
+    }
 
     // AIからの温かいメッセージ集 (5歳〜12歳のお子様向け・各2行)
     const WIN_QUOTES = [
@@ -2876,8 +3358,15 @@
 
         if (val === evalPlayer) {
           score += totalPositionalValue;
+          // Apply learned position bonus
+          if (learnedPositionBonuses[idx]) {
+            score += learnedPositionBonuses[idx];
+          }
         } else {
           score -= totalPositionalValue;
+          if (learnedPositionBonuses[idx]) {
+            score -= learnedPositionBonuses[idx];
+          }
         }
       }
 
@@ -3848,6 +4337,7 @@
         customPanel.style.display = lvl === 'custom' ? 'flex' : 'none';
       }
 
+      saveUserPreferences();
       updateCoachingAndEvalGauge();
       renderUI();
     }
@@ -3862,6 +4352,8 @@
       document.getElementById('customDepthBadge').textContent = `${depthVal}手`;
       document.getElementById('customTimeBadge').textContent = `${timeVal.toFixed(1)}秒`;
 
+      saveUserPreferences();
+
       if (difficulty === 'custom') {
         updateCoachingAndEvalGauge();
         renderUI();
@@ -3871,7 +4363,7 @@
     // -------------------------------------------------------------
     // 4. Nickname, Time Limit, Particle FX & Champions Engine
     // -------------------------------------------------------------
-    function handleNicknameChange(val) {
+    function handleNicknameChange(val, shouldSave = true) {
       playerNickname = val;
       const countBadge = document.getElementById('nicknameCountBadge');
       if (countBadge) {
@@ -3893,6 +4385,10 @@
       if (btnHuman) btnHuman.textContent = `${name} 先手`;
       if (btnAi) btnAi.textContent = `${name} 後手`;
 
+      if (shouldSave) {
+        saveUserPreferences();
+      }
+
       updateStatusDisplay();
       updateCoachingAndEvalGauge();
       renderUI();
@@ -3900,6 +4396,7 @@
 
     function changeTimeLimit(val) {
       humanTimeLimitSec = parseInt(val, 10);
+      saveUserPreferences();
       if (!isGameOver && currentTurn === humanPlayer && !isAiThinking) {
         startTurnTimer();
       } else {
@@ -4063,6 +4560,758 @@
         localStorage.setItem(HEROES_STORAGE_KEY, JSON.stringify(heroes));
       } catch (e) {
         console.warn('LocalStorage save error:', e);
+      }
+
+      // 「上級」または「マスター」で人間が勝利した場合、AI学習用完全棋譜（全着手履歴）を記録
+      if (difficulty === 'hard' || difficulty === 'master' || difficulty === 'custom') {
+        saveWinningGameHistoryForLearning(newRecord);
+      }
+    }
+
+    // 撃破棋譜ストレージ＆AI学習エンジン
+    function getStoredWinningGames() {
+      try {
+        const raw = localStorage.getItem(STORED_GAMES_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveWinningGameHistoryForLearning(recordInfo) {
+      try {
+        const games = getStoredWinningGames();
+        // Extract winning line info
+        let winLineIndices = winningLine ? winningLine.slice() : [];
+        let finalMove = history.length > 0 ? history[history.length - 1] : null;
+
+        const fullGameData = {
+          id: `game-${Date.now()}`,
+          dateStr: recordInfo.dateStr,
+          nickname: recordInfo.nickname,
+          difficulty: difficulty,
+          order: humanPlayer === 1 ? '先手' : '後手',
+          totalMoves: history.length,
+          winningLine: winLineIndices,
+          finalCol: finalMove ? finalMove.col : -1,
+          moves: history.map(m => ({
+            turn: m.turn,
+            player: m.player,
+            col: m.col,
+            x: m.x,
+            y: m.y,
+            z: m.z
+          }))
+        };
+
+        games.unshift(fullGameData);
+        // 保管上限は余裕を持った500局
+        if (games.length > 500) games.pop();
+        localStorage.setItem(STORED_GAMES_KEY, JSON.stringify(games));
+
+        // 自動学習の実施（新規棋譜獲得時にも即時反映）
+        trainAiFromStoredGames(false);
+
+        // クラウドサーバーへも勝利棋譜を送信（全プレイヤー共通AIモデルの学習に自動貢献）
+        fetch('/api/games/record', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fullGameData)
+        }).then(r => r.json()).then(res => {
+          if (res && res.model) {
+            // クラウド学習結果をマージ
+            syncGlobalAiModelFromServer(false);
+          }
+        }).catch(e => {});
+      } catch (e) {
+        console.warn('Error saving winning game for learning:', e);
+      }
+    }
+
+    // AI学習処理本体: 棋譜から序盤勝ち筋・要衝マスボーナス・敗戦回避トラップを自動構築
+    function trainAiFromStoredGames(isManualTrigger = false) {
+      try {
+        const games = getStoredWinningGames();
+        const learnedBook = {};
+        const posBonuses = {};
+        let learnedCount = 0;
+
+        games.forEach(game => {
+          if (!game.moves || !Array.isArray(game.moves)) return;
+
+          // 1. 序盤定石の学習 (初手〜第8手までの勝利者着手)
+          const simBoard = new Array(64).fill(0);
+          const simHeights = new Array(16).fill(0);
+
+          for (let step = 0; step < game.moves.length && step < 8; step++) {
+            const m = game.moves[step];
+            const boardKey = simBoard.slice(0, 64).join('');
+
+            // 人間の勝利手（AIにとっては次に同じ局面に遭遇した際の最適応手または注意手）
+            if (m.player === (game.order === '先手' ? 1 : 2)) {
+              if (learnedBook[boardKey] === undefined) {
+                learnedBook[boardKey] = m.col;
+                learnedCount++;
+              }
+            }
+
+            const z = simHeights[m.col];
+            if (z < 4) {
+              const idx = m.col + z * 16;
+              simBoard[idx] = m.player;
+              simHeights[m.col]++;
+            }
+          }
+
+          // 2. 決着ライン・要衝マスの空間認識ボーナス補正
+          if (game.winningLine && Array.isArray(game.winningLine)) {
+            game.winningLine.forEach(idx => {
+              posBonuses[idx] = (posBonuses[idx] || 0) + 12;
+            });
+          }
+
+          // 終盤の決め手になった列のボーナス
+          if (game.finalCol >= 0 && game.finalCol < 16) {
+            // 列の最上部マス
+            for (let z = 0; z < 4; z++) {
+              const cIdx = game.finalCol + z * 16;
+              posBonuses[cIdx] = (posBonuses[cIdx] || 0) + 8;
+            }
+          }
+        });
+
+        // 状態の更新
+        learnedOpeningBook = learnedBook;
+        learnedPositionBonuses = posBonuses;
+        aiLearningMetadata = {
+          lastTrainedAt: new Date().toLocaleString('ja-JP'),
+          totalGamesTrained: games.length,
+          learnedCount: learnedCount
+        };
+
+        // 永続化
+        localStorage.setItem(LEARNED_PATTERNS_KEY, JSON.stringify({
+          learnedBook: learnedOpeningBook,
+          posBonuses: learnedPositionBonuses,
+          meta: aiLearningMetadata
+        }));
+
+        updateQuietAiRatingDisplay();
+        updateAdminModalUI();
+
+        if (isManualTrigger) {
+          showFloatingToast(`🧠 AI学習が完了しました！ (${games.length}局の棋譜から ${learnedCount}手の定石・防御パターンを習得)`);
+          playSoundEffect('win');
+        }
+      } catch (e) {
+        console.warn('AI Training error:', e);
+      }
+    }
+
+    // AIの最高実力レーティング・能力値の数値化計算
+    function calculateAiMaxRating() {
+      const BASE_RATING = 2000;
+      const games = getStoredWinningGames();
+      const totalGames = games.length;
+      const learnedCount = aiLearningMetadata.learnedCount || Object.keys(learnedOpeningBook).length || 0;
+      let posBonusSum = 0;
+      if (learnedPositionBonuses && typeof learnedPositionBonuses === 'object') {
+        Object.values(learnedPositionBonuses).forEach(v => {
+          if (typeof v === 'number') posBonusSum += v;
+        });
+      }
+      // 蓄積された撃破棋譜・学習済み定石・要衝マス重みから総合実力値を算出
+      const ratingGain = (totalGames * 14) + (learnedCount * 3) + Math.min(300, Math.floor(posBonusSum / 8));
+      return BASE_RATING + ratingGain;
+    }
+
+    function updateQuietAiRatingDisplay() {
+      const currentRating = calculateAiMaxRating();
+      const quietEl = document.getElementById('aiMaxRatingDisplay');
+      if (quietEl) {
+        quietEl.textContent = `${currentRating}`;
+      }
+      const adminRatingEl = document.getElementById('adminKpiAiRating');
+      if (adminRatingEl) {
+        const gain = currentRating - 2000;
+        adminRatingEl.textContent = gain > 0 ? `${currentRating} (+${gain})` : `${currentRating}`;
+      }
+    }
+
+    function loadAiLearnedData() {
+      try {
+        const raw = localStorage.getItem(LEARNED_PATTERNS_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (data && typeof data === 'object') {
+          if (data.learnedBook) learnedOpeningBook = data.learnedBook;
+          if (data.posBonuses) learnedPositionBonuses = data.posBonuses;
+          if (data.meta) aiLearningMetadata = data.meta;
+        }
+        updateQuietAiRatingDisplay();
+      } catch (e) {}
+    }
+
+    function resetAiLearnedData() {
+      if (!confirm('学習済みデータを初期化してもよろしいですか？（※保存された棋譜自体は保持されます）')) return;
+      learnedOpeningBook = {};
+      learnedPositionBonuses = {};
+      aiLearningMetadata = { lastTrainedAt: '初期化済', totalGamesTrained: 0, learnedCount: 0 };
+      localStorage.removeItem(LEARNED_PATTERNS_KEY);
+      updateQuietAiRatingDisplay();
+      updateAdminModalUI();
+      showFloatingToast('🔄 AI学習データを初期状態にリセットしました');
+    }
+
+    // 管理者パネルの表示制御・URL判定（?admin=true または 開発者環境）
+    function checkIsAdminUser() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasAdminParam = urlParams.has('admin') || urlParams.get('mode') === 'admin' || window.location.hash.includes('admin');
+      const isDevHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '3000';
+      return hasAdminParam || isDevHost;
+    }
+
+    function initAdminHeaderButton() {
+      const btn = document.getElementById('btnAdminPanelHeader');
+      if (btn) {
+        if (checkIsAdminUser()) {
+          btn.style.display = 'inline-flex';
+        } else {
+          btn.style.display = 'none';
+        }
+      }
+    }
+
+    function openAdminModal() {
+      const modal = document.getElementById('adminModal');
+      if (!modal) return;
+      updateAdminModalUI();
+      modal.classList.add('show');
+      playSoundEffect('tap');
+      startServerStatusPolling();
+    }
+
+    function closeAdminModal() {
+      const modal = document.getElementById('adminModal');
+      if (modal) modal.classList.remove('show');
+      playSoundEffect('tap');
+      if (serverPollInterval) {
+        clearInterval(serverPollInterval);
+        serverPollInterval = null;
+      }
+    }
+
+    function updateAdminModalUI() {
+      updateQuietAiRatingDisplay();
+      const games = getStoredWinningGames();
+      const kpiGames = document.getElementById('adminKpiTotalGames');
+      const kpiLearned = document.getElementById('adminKpiLearnedPatterns');
+      const kpiLast = document.getElementById('adminKpiLastTrained');
+      const tbody = document.getElementById('adminGamesTableBody');
+
+      if (kpiGames) kpiGames.textContent = `${games.length}局`;
+      if (kpiLearned) kpiLearned.textContent = `${aiLearningMetadata.learnedCount || Object.keys(learnedOpeningBook).length}手`;
+      if (kpiLast) kpiLast.textContent = aiLearningMetadata.lastTrainedAt || '未実行';
+
+      if (tbody) {
+        tbody.innerHTML = '';
+        if (games.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#94a3b8;">現在蓄積された撃破棋譜はありません。「上級」または「マスター」で人間がAIに勝利すると自動記録されます。</td></tr>`;
+        } else {
+          games.forEach((g, idx) => {
+            const tr = document.createElement('tr');
+            const finalColName = (g.finalCol >= 0 && g.finalCol < 16) ? COL_NAMES[g.finalCol] : '-';
+            tr.innerHTML = `
+              <td style="color:#94a3b8; font-weight:700;">#${idx + 1}</td>
+              <td style="font-weight:700; color:#38bdf8;">${escapeHtml(g.nickname || '人間')}</td>
+              <td><span style="background:rgba(239,68,68,0.2); color:#fca5a5; padding:2px 8px; border-radius:4px; font-weight:700;">${g.difficulty}</span></td>
+              <td><strong style="color:#ffffff;">${g.totalMoves}手</strong> (${g.order})</td>
+              <td style="color:#cbd5e1;">決着列: <b style="color:#fde047;">${finalColName}</b> (4連完成)</td>
+              <td style="color:#94a3b8; font-size:11px;">${g.dateStr}</td>
+              <td style="text-align:right;">
+                <button type="button" onclick="exportSingleGameJSON('${g.id}')" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:3px 8px; border-radius:4px; font-size:10.5px; cursor:pointer;">
+                  JSON
+                </button>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      }
+    }
+
+    function exportRecordedGamesJSON() {
+      const games = getStoredWinningGames();
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(games, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `3D四目並べ_撃破棋譜全件_${Date.now()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showFloatingToast('💾 全撃破棋譜データをJSONでダウンロードしました');
+    }
+
+    function exportSingleGameJSON(gameId) {
+      const games = getStoredWinningGames();
+      const g = games.find(item => item.id === gameId);
+      if (!g) return;
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(g, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `3D四目並べ_棋譜_${g.nickname}_${g.totalMoves}手.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showFloatingToast(`💾 棋譜 (#${g.nickname}) をダウンロードしました`);
+    }
+
+    function triggerImportRecordedGames() {
+      const input = document.getElementById('adminGamesImportInput');
+      if (input) input.click();
+    }
+
+    function handleImportRecordedGamesFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          const currentGames = getStoredWinningGames();
+          let added = 0;
+          if (Array.isArray(parsed)) {
+            parsed.forEach(p => {
+              if (p && p.moves && !currentGames.some(c => c.id === p.id)) {
+                currentGames.push(p);
+                added++;
+              }
+            });
+          } else if (parsed && parsed.moves && !currentGames.some(c => c.id === parsed.id)) {
+            currentGames.push(parsed);
+            added++;
+          }
+          localStorage.setItem(STORED_GAMES_KEY, JSON.stringify(currentGames));
+          trainAiFromStoredGames(false);
+          updateAdminModalUI();
+          showFloatingToast(`📥 ${added}件の棋譜を取り込み、AI学習を更新しました！`);
+        } catch (err) {
+          alert('JSONファイルの読み込みに失敗しました。フォーマットを確認してください。');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    // -------------------------------------------------------------
+    // Plan A: Browser High-Speed Self-Play Simulator (Memory-Only)
+    // -------------------------------------------------------------
+    let localSimRunning = false;
+    let localSimStopRequested = false;
+
+    function setLocalSimCount(count, btn) {
+      const input = document.getElementById('localSimCountInput');
+      if (input) input.value = count;
+      const parent = btn.parentElement;
+      if (parent) {
+        parent.querySelectorAll('.sim-preset-btn').forEach(b => b.classList.remove('active'));
+      }
+      btn.classList.add('active');
+    }
+
+    function setServerSimCount(count, btn) {
+      const input = document.getElementById('serverSimCountInput');
+      if (input) input.value = count;
+      const parent = btn.parentElement;
+      if (parent) {
+        parent.querySelectorAll('.sim-preset-btn').forEach(b => b.classList.remove('active'));
+      }
+      btn.classList.add('active');
+    }
+
+    async function startLocalSelfPlaySimulation() {
+      if (localSimRunning) return;
+      const input = document.getElementById('localSimCountInput');
+      const targetGames = Math.max(100, Math.min(50000, parseInt(input ? input.value : '1000', 10) || 1000));
+
+      localSimRunning = true;
+      localSimStopRequested = false;
+
+      const btnStart = document.getElementById('btnStartLocalSim');
+      const btnStop = document.getElementById('btnStopLocalSim');
+      const statsText = document.getElementById('localSimStatsText');
+      const progressFill = document.getElementById('localSimProgressFill');
+
+      if (btnStart) btnStart.style.display = 'none';
+      if (btnStop) btnStop.style.display = 'inline-block';
+
+      let p1Wins = 0, p2Wins = 0, draws = 0;
+      let newLearned = 0;
+      const startTime = performance.now();
+      let lastUIUpdate = startTime;
+
+      const simB = new Uint8Array(64);
+      const simH = new Uint8Array(16);
+
+      for (let g = 0; g < targetGames; g++) {
+        if (localSimStopRequested) break;
+
+        simB.fill(0);
+        simH.fill(0);
+        let curP = 1;
+        let winner = null;
+        let winLine = null;
+        let finalCol = -1;
+        const moves = [];
+
+        for (let turn = 0; turn < 64; turn++) {
+          const col = chooseSimMove(simB, simH, curP, learnedOpeningBook, learnedPositionBonuses);
+          if (col === -1) break;
+
+          const z = simH[col];
+          simB[col + z * 16] = curP;
+          simH[col]++;
+          moves.push({ player: curP, col });
+
+          const win = checkSimWin(simB);
+          if (win) {
+            winner = win.winner;
+            winLine = win.line;
+            finalCol = col;
+            break;
+          }
+          curP = curP === 1 ? 2 : 1;
+        }
+
+        if (winner === 1) p1Wins++;
+        else if (winner === 2) p2Wins++;
+        else draws++;
+
+        // Reinforcement Learning: Extract winning patterns
+        if (winner !== null && winLine !== null && moves.length >= 4) {
+          const playbackB = new Uint8Array(64);
+          const playbackH = new Uint8Array(16);
+
+          for (let s = 0; s < moves.length && s < 8; s++) {
+            const m = moves[s];
+            const key = playbackB.join('');
+            if (m.player === winner && learnedOpeningBook[key] === undefined) {
+              learnedOpeningBook[key] = m.col;
+              newLearned++;
+            }
+            const z = playbackH[m.col];
+            if (z < 4) {
+              playbackB[m.col + z * 16] = m.player;
+              playbackH[m.col]++;
+            }
+          }
+
+          winLine.forEach(idx => {
+            learnedPositionBonuses[idx] = (learnedPositionBonuses[idx] || 0) + 8;
+          });
+          if (finalCol >= 0 && finalCol < 16) {
+            for (let z = 0; z < 4; z++) {
+              learnedPositionBonuses[finalCol + z * 16] = (learnedPositionBonuses[finalCol + z * 16] || 0) + 4;
+            }
+          }
+        }
+
+        const now = performance.now();
+        if (now - lastUIUpdate > 80 || g === targetGames - 1) {
+          const completed = g + 1;
+          const pct = Math.round((completed / targetGames) * 100);
+          const elapsedSec = Math.max(0.01, (now - startTime) / 1000);
+          const speed = Math.round(completed / elapsedSec);
+
+          if (progressFill) progressFill.style.width = `${pct}%`;
+          if (statsText) {
+            statsText.innerHTML = `実行中: <b>${completed.toLocaleString()} / ${targetGames.toLocaleString()}局 (${pct}%)</b> · 速度: ${speed.toLocaleString()}局/秒 · 先手${p1Wins}勝 / 後手${p2Wins}勝 / 引分${draws} (新定石 +${newLearned})`;
+          }
+          lastUIUpdate = now;
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+
+      // Save state
+      aiLearningMetadata = {
+        lastTrainedAt: new Date().toLocaleString('ja-JP'),
+        totalGamesTrained: (aiLearningMetadata.totalGamesTrained || 0),
+        learnedCount: Object.keys(learnedOpeningBook).length
+      };
+
+      try {
+        localStorage.setItem(LEARNED_PATTERNS_KEY, JSON.stringify({
+          learnedBook: learnedOpeningBook,
+          posBonuses: learnedPositionBonuses,
+          meta: aiLearningMetadata
+        }));
+      } catch (e) {}
+
+      updateQuietAiRatingDisplay();
+      updateAdminModalUI();
+
+      localSimRunning = false;
+      if (btnStart) btnStart.style.display = 'inline-block';
+      if (btnStop) btnStop.style.display = 'none';
+
+      if (!localSimStopRequested) {
+        showFloatingToast(`⚡ ブラウザ内自己対局完了！ (${targetGames.toLocaleString()}局完了 · 定石+${newLearned}手習得)`);
+        playSoundEffect('win');
+      } else {
+        showFloatingToast('⏹️ 自己対局シミュレーションを中断しました');
+      }
+    }
+
+    function stopLocalSelfPlaySimulation() {
+      localSimStopRequested = true;
+    }
+
+    function chooseSimMove(b, h, player, book, bonuses) {
+      const key = b.join('');
+      if (book && book[key] !== undefined && h[book[key]] < 4) {
+        return book[key];
+      }
+
+      const validCols = [];
+      for (let c = 0; c < 16; c++) {
+        if (h[c] < 4) validCols.push(c);
+      }
+      if (validCols.length === 0) return -1;
+      if (validCols.length === 1) return validCols[0];
+
+      // Immediate Win
+      for (let col of validCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+        b[idx] = player;
+        const win = checkSimWin(b);
+        b[idx] = 0;
+        if (win && win.winner === player) return col;
+      }
+
+      // Immediate Block
+      const opp = player === 1 ? 2 : 1;
+      for (let col of validCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+        b[idx] = opp;
+        const win = checkSimWin(b);
+        b[idx] = 0;
+        if (win && win.winner === opp) return col;
+      }
+
+      // Exploration epsilon
+      if (Math.random() < 0.06) {
+        const centers = [5, 6, 9, 10, 0, 3, 12, 15].filter(c => h[c] < 4);
+        if (centers.length > 0) return centers[Math.floor(Math.random() * centers.length)];
+      }
+
+      let bestScore = -Infinity;
+      let bestCol = validCols[0];
+
+      for (let col of validCols) {
+        const z = h[col];
+        const idx = col + z * 16;
+        b[idx] = player;
+        h[col]++;
+
+        let score = -evaluateSimBoard(b, h, opp, bonuses);
+
+        b[idx] = 0;
+        h[col]--;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestCol = col;
+        }
+      }
+
+      return bestCol;
+    }
+
+    function checkSimWin(b) {
+      for (let i = 0; i < 76; i++) {
+        const line = WINNING_LINES[i];
+        const val = b[line[0]];
+        if (val !== 0 && val === b[line[1]] && val === b[line[2]] && val === b[line[3]]) {
+          return { winner: val, line: line };
+        }
+      }
+      return null;
+    }
+
+    function evaluateSimBoard(b, h, evalPlayer, bonuses) {
+      const oppPlayer = evalPlayer === 1 ? 2 : 1;
+      let score = 0;
+      for (let i = 0; i < 76; i++) {
+        const line = WINNING_LINES[i];
+        let p = 0, o = 0, emptyIdx = -1;
+        for (let j = 0; j < 4; j++) {
+          const val = b[line[j]];
+          if (val === evalPlayer) p++;
+          else if (val === oppPlayer) o++;
+          else emptyIdx = line[j];
+        }
+        if (p > 0 && o > 0) continue;
+        if (p === 3) {
+          const col = emptyIdx % 16;
+          const z = Math.floor(emptyIdx / 16);
+          score += (h[col] === z) ? 800 : 250;
+        } else if (p === 2) score += 35;
+
+        if (o === 3) {
+          const col = emptyIdx % 16;
+          const z = Math.floor(emptyIdx / 16);
+          score -= (h[col] === z) ? 850 : 280;
+        } else if (o === 2) score -= 50;
+      }
+      for (let idx = 0; idx < 64; idx++) {
+        const val = b[idx];
+        if (val === 0) continue;
+        const bv = CELL_LINE_COUNTS[idx] * 2 + (bonuses ? (bonuses[idx] || 0) : 0);
+        if (val === evalPlayer) score += bv;
+        else score -= bv;
+      }
+      return score;
+    }
+
+    // -------------------------------------------------------------
+    // Plan B: Cloud Server Background Simulation & Global Sync
+    // -------------------------------------------------------------
+    let serverPollInterval = null;
+
+    async function syncGlobalAiModelFromServer(isManual = false) {
+      try {
+        const res = await fetch('/api/ai/model');
+        if (!res.ok) return;
+        const serverModel = await res.json();
+        if (serverModel && serverModel.learnedBook) {
+          learnedOpeningBook = { ...learnedOpeningBook, ...serverModel.learnedBook };
+          learnedPositionBonuses = { ...learnedPositionBonuses, ...serverModel.posBonuses };
+          aiLearningMetadata = {
+            lastTrainedAt: serverModel.meta.lastTrainedAt,
+            totalGamesTrained: serverModel.meta.totalGamesTrained || 0,
+            learnedCount: Object.keys(learnedOpeningBook).length
+          };
+
+          try {
+            localStorage.setItem(LEARNED_PATTERNS_KEY, JSON.stringify({
+              learnedBook: learnedOpeningBook,
+              posBonuses: learnedPositionBonuses,
+              meta: aiLearningMetadata
+            }));
+          } catch (e) {}
+
+          updateQuietAiRatingDisplay();
+          updateAdminModalUI();
+
+          if (isManual) {
+            showFloatingToast(`☁️ 最新のクラウドAIモデルと同期完了！（全 ${Object.keys(learnedOpeningBook).length}手の定石・防御知識を統合）`);
+            playSoundEffect('win');
+          }
+        }
+      } catch (e) {
+        console.warn('Cloud AI sync warning:', e);
+      }
+    }
+
+    async function startServerSelfPlaySimulation() {
+      const input = document.getElementById('serverSimCountInput');
+      const count = Math.max(100, Math.min(100000, parseInt(input ? input.value : '1000', 10) || 1000));
+
+      try {
+        const res = await fetch('/api/simulation/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ count })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(`開始エラー: ${data.error || '不明なエラー'}`);
+          return;
+        }
+
+        showFloatingToast(`🚀 クラウド自己対局を開始しました（${count.toLocaleString()}局）。PCを閉じても継続します！`);
+        playSoundEffect('tap');
+        startServerStatusPolling();
+      } catch (e) {
+        alert('サーバーとの通信に失敗しました。');
+      }
+    }
+
+    async function stopServerSelfPlaySimulation() {
+      try {
+        await fetch('/api/simulation/stop', { method: 'POST' });
+        showFloatingToast('⏹️ サーバー対局の停止をリクエストしました');
+      } catch (e) {}
+    }
+
+    function startServerStatusPolling() {
+      if (serverPollInterval) clearInterval(serverPollInterval);
+      pollServerStatusOnce();
+      serverPollInterval = setInterval(pollServerStatusOnce, 1200);
+    }
+
+    async function pollServerStatusOnce() {
+      try {
+        const res = await fetch('/api/simulation/status');
+        if (!res.ok) return;
+        const data = await res.json();
+        const status = data.status;
+
+        const btnStart = document.getElementById('btnStartServerSim');
+        const btnStop = document.getElementById('btnStopServerSim');
+        const statsText = document.getElementById('serverSimStatsText');
+        const progressFill = document.getElementById('serverSimProgressFill');
+        const liveBadge = document.getElementById('serverSimLiveBadge');
+
+        if (status.isRunning) {
+          if (btnStart) btnStart.style.display = 'none';
+          if (btnStop) btnStop.style.display = 'inline-block';
+          if (liveBadge) {
+            liveBadge.textContent = '🚀 計算実行中 (PC放置OK)';
+            liveBadge.style.background = 'rgba(168,85,247,0.25)';
+            liveBadge.style.color = '#c084fc';
+            liveBadge.style.borderColor = 'rgba(168,85,247,0.5)';
+          }
+          if (progressFill) progressFill.style.width = `${status.progressPct}%`;
+          if (statsText) {
+            statsText.innerHTML = `クラウド実行中: <b>${status.currentCount.toLocaleString()} / ${status.targetCount.toLocaleString()}局 (${status.progressPct}%)</b> · 速度: ${status.speedGamesPerSec.toLocaleString()}局/秒 · 残り約${status.etaSec}秒 (定石+${status.learnedMovesCount})`;
+          }
+        } else {
+          if (btnStart) btnStart.style.display = 'inline-block';
+          if (btnStop) btnStop.style.display = 'none';
+          if (liveBadge) {
+            liveBadge.textContent = 'サーバー待機中';
+            liveBadge.style.background = 'rgba(34,197,94,0.2)';
+            liveBadge.style.color = '#4ade80';
+            liveBadge.style.borderColor = 'rgba(34,197,94,0.4)';
+          }
+          if (status.currentCount > 0 && status.progressPct >= 100) {
+            if (progressFill) progressFill.style.width = '100%';
+            if (statsText) {
+              statsText.innerHTML = `前回完了: <b>${status.targetCount.toLocaleString()}局達成</b> (先手${status.p1Wins} / 後手${status.p2Wins} / 新定石+${status.learnedMovesCount})`;
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 毎日の定時自動学習チェック (毎日午前03:00、またはその日最初のアクセス時に自動実行)
+    function checkDailyAutoLearningSchedule() {
+      const DAILY_TRAIN_STORAGE_KEY = '3d_connect4_ai_last_daily_train_date';
+      const todayStr = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+      const lastTrainDate = localStorage.getItem(DAILY_TRAIN_STORAGE_KEY);
+
+      if (lastTrainDate !== todayStr) {
+        // 本日分の自動定期学習を実行
+        trainAiFromStoredGames(false);
+        try {
+          localStorage.setItem(DAILY_TRAIN_STORAGE_KEY, todayStr);
+        } catch (e) {}
+        console.log(`[AI定期自動学習] ${todayStr} の棋譜学習と探索補正を完了しました`);
       }
     }
 
@@ -4445,6 +5694,7 @@
     // Toggle Assist Mode 1 (勝率予測・評価値)
     function toggleCoaching1(enabled) {
       coachingMode1 = enabled;
+      saveUserPreferences();
       updateCoachingAndEvalGauge();
       renderUI();
     }
@@ -4452,19 +5702,25 @@
     // Toggle Assist Mode 2 (戦術・リーチ・W/3連リーチ予告)
     function toggleCoaching2(enabled) {
       coachingMode2 = enabled;
+      saveUserPreferences();
       updateCoachingAndEvalGauge();
       renderUI();
     }
 
-    function changeTheme(themeKey) {
+    function changeTheme(themeKey, shouldSave = true) {
       currentThemeKey = themeKey;
       const t = COLOR_THEMES[themeKey];
-      document.documentElement.style.setProperty('--p1-base', t.p1.base);
-      document.documentElement.style.setProperty('--p1-light', t.p1.light);
-      document.documentElement.style.setProperty('--p1-dark', t.p1.dark);
-      document.documentElement.style.setProperty('--p2-base', t.p2.base);
-      document.documentElement.style.setProperty('--p2-light', t.p2.light);
-      document.documentElement.style.setProperty('--p2-dark', t.p2.dark);
+      if (t) {
+        document.documentElement.style.setProperty('--p1-base', t.p1.base);
+        document.documentElement.style.setProperty('--p1-light', t.p1.light);
+        document.documentElement.style.setProperty('--p1-dark', t.p1.dark);
+        document.documentElement.style.setProperty('--p2-base', t.p2.base);
+        document.documentElement.style.setProperty('--p2-light', t.p2.light);
+        document.documentElement.style.setProperty('--p2-dark', t.p2.dark);
+      }
+      if (shouldSave) {
+        saveUserPreferences();
+      }
       updateCoachingAndEvalGauge();
       renderUI();
     }
@@ -4473,6 +5729,7 @@
     function setOrder(order) {
       humanPlayer = order;
       aiPlayer = humanPlayer === 1 ? 2 : 1;
+      saveUserPreferences();
       resetGame();
     }
 
@@ -5974,7 +7231,14 @@
     // Start 3D Loop
     requestAnimationFrame(draw3DScene);
 
-    // Initial Setup
+    // Initial Setup & Persistent Engine
+    loadUserPreferences();
+    loadAiLearnedData();
+    initAdminHeaderButton();
+    syncUIFromLoadedPreferences();
+    checkDailyAutoLearningSchedule();
+    syncGlobalAiModelFromServer(false);
+
     resetGame();
     switchMobileTab(currentMobileTab);
     initAccessCounter();
