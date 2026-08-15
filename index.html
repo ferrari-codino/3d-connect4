@@ -1606,9 +1606,11 @@
       transition: opacity 0.25s ease;
     }
 
-    .modal-overlay.active {
-      display: flex;
-      opacity: 1;
+    .modal-overlay.active,
+    .modal-overlay.show {
+      display: flex !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
     }
 
     .modal-card {
@@ -2590,12 +2592,34 @@
               3D描画を全カットし、メモリ上の純粋計算だけでAI(マスター)同士を高速自動対戦させて即時学習します。
             </div>
           </div>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <button type="button" class="sim-preset-btn active" onclick="setLocalSimCount(1000, this)">1,000局</button>
-            <button type="button" class="sim-preset-btn" onclick="setLocalSimCount(5000, this)">5,000局</button>
-            <button type="button" class="sim-preset-btn" onclick="setLocalSimCount(10000, this)">10,000局</button>
-            <input type="number" id="localSimCountInput" value="1000" min="100" max="50000" step="100" style="width:70px; background:#0f172a; border:1px solid rgba(255,255,255,0.2); color:#fff; padding:3px 6px; border-radius:4px; font-size:11px; text-align:right;" title="対局数">
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <button type="button" class="sim-preset-btn active" onclick="setLocalSimCount(100000, this)">100,000局</button>
+            <button type="button" class="sim-preset-btn" onclick="setLocalSimCount(500000, this)">500,000局</button>
+            <button type="button" class="sim-preset-btn" onclick="setLocalSimCount(1000000, this)">1,000,000局</button>
+            <input type="number" id="localSimCountInput" value="100000" min="1000" max="1000000" step="10000" style="width:85px; background:#0f172a; border:1px solid rgba(255,255,255,0.2); color:#fff; padding:3px 6px; border-radius:4px; font-size:11px; text-align:right;" title="対局数 (100,000〜1,000,000局)">
           </div>
+        </div>
+
+        <!-- 序盤ランダム手（探索モード）設定 -->
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; font-size:11px; color:#cbd5e1; background:rgba(0,0,0,0.3); padding:6px 12px; border-radius:6px; border:1px solid rgba(56,189,248,0.25);">
+          <span style="font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:4px;">
+            🎲 序盤ランダム手 (探索モード):
+          </span>
+          <!-- <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+            <input type="radio" name="localSimRandomPlies" value="1"> 初手のみ (1手)
+          </label> -->
+          <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+            <input type="radio" name="localSimRandomPlies" value="2"> 序盤2手 (先後1手ずつ)
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+            <input type="radio" name="localSimRandomPlies" value="4" checked> 序盤4手 (大乱戦・全方位学習)
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+            <input type="radio" name="localSimRandomPlies" value="6"> 序盤6手 (深層乱戦・絶対手保証)
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+            <input type="radio" name="localSimRandomPlies" value="0"> ランダムなし (固定定石)
+          </label>
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -3798,18 +3822,38 @@
         }
 
         if (difficulty === 'easy') {
-          const candidateScores = validMoves.map(col => {
-            const z = heights[col];
-            const idx = col + z * 16;
-            board[idx] = aiPlayer;
-            heights[col]++;
-            const score = evaluateBoard(board, heights, aiPlayer) + (Math.random() * 200 - 100);
-            board[idx] = 0;
-            heights[col]--;
-            return { col, score };
-          });
-          candidateScores.sort((a, b) => b.score - a.score);
-          chosenMove = candidateScores[0].col;
+          // 初級: 40%の確率で完全ランダム手、それ以外も大きな評価ノイズ(±450)を付加して人間らしく迷う
+          if (Math.random() < 0.40) {
+            chosenMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+          } else {
+            const candidateScores = validMoves.map(col => {
+              const z = heights[col];
+              const idx = col + z * 16;
+              board[idx] = aiPlayer;
+              heights[col]++;
+              const score = evaluateBoard(board, heights, aiPlayer) + (Math.random() * 900 - 450);
+              board[idx] = 0;
+              heights[col]--;
+              return { col, score };
+            });
+            candidateScores.sort((a, b) => b.score - a.score);
+            chosenMove = candidateScores[0].col;
+          }
+        } else if (difficulty === 'medium') {
+          // 中級: 序盤・中盤で約25%の確率でランダム揺らぎ手（または上位3候補手からランダム選択）
+          const searchRes = getBestMoveIterative(board, heights, targetDepth, timeLimitMs, aiPlayer, humanPlayer);
+          if (Math.random() < 0.25 && validMoves.length > 1) {
+            // 王手・被王手ではない通常局面でランダムに揺らぎを発生させる
+            const nonBlunderCols = validMoves.filter(c => c !== searchRes.move);
+            if (nonBlunderCols.length > 0 && Math.random() < 0.5) {
+              chosenMove = nonBlunderCols[Math.floor(Math.random() * nonBlunderCols.length)];
+            } else {
+              chosenMove = searchRes.move;
+            }
+          } else {
+            chosenMove = searchRes.move;
+          }
+          moveScore = searchRes.score;
         } else {
           const searchRes = getBestMoveIterative(board, heights, targetDepth, timeLimitMs, aiPlayer, humanPlayer);
           chosenMove = searchRes.move;
@@ -4716,15 +4760,20 @@
       const games = getStoredWinningGames();
       const totalGames = games.length;
       const learnedCount = aiLearningMetadata.learnedCount || Object.keys(learnedOpeningBook).length || 0;
+      const simGames = (aiLearningMetadata && aiLearningMetadata.totalSimulatedGames) || 0;
       let posBonusSum = 0;
       if (learnedPositionBonuses && typeof learnedPositionBonuses === 'object') {
         Object.values(learnedPositionBonuses).forEach(v => {
           if (typeof v === 'number') posBonusSum += v;
         });
       }
-      // 蓄積された撃破棋譜・学習済み定石・要衝マス重みから総合実力値を算出
-      const ratingGain = (totalGames * 14) + (learnedCount * 3) + Math.min(300, Math.floor(posBonusSum / 8));
-      return BASE_RATING + ratingGain;
+      // 蓄積された撃破棋譜・学習済み定石・要衝マス重み・自己対局局数から総合実力値を算出
+      const humanGain = totalGames * 14;
+      const bookGain = Math.min(800, learnedCount * 0.8);
+      const posGain = Math.min(400, Math.floor(posBonusSum / 8));
+      const simGain = Math.min(800, Math.floor(Math.sqrt(simGames) * 3.5));
+      const ratingGain = humanGain + bookGain + posGain + simGain;
+      return BASE_RATING + Math.round(ratingGain);
     }
 
     function updateQuietAiRatingDisplay() {
@@ -4765,11 +4814,15 @@
       showFloatingToast('🔄 AI学習データを初期状態にリセットしました');
     }
 
-    // 管理者パネルの表示制御・URL判定（?admin=true または 開発者環境）
+    // 管理者パネルの表示制御・URL判定（?admin=true または 開発者環境 / run.app）
     function checkIsAdminUser() {
       const urlParams = new URLSearchParams(window.location.search);
       const hasAdminParam = urlParams.has('admin') || urlParams.get('mode') === 'admin' || window.location.hash.includes('admin');
-      const isDevHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '3000';
+      const isDevHost = window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1' || 
+                        window.location.port === '3000' || 
+                        window.location.hostname.includes('run.app') || 
+                        window.location.hostname.includes('ais-dev');
       return hasAdminParam || isDevHost;
     }
 
@@ -4779,23 +4832,45 @@
         if (checkIsAdminUser()) {
           btn.style.display = 'inline-flex';
         } else {
-          btn.style.display = 'none';
+          // 一般公開URLでもボタンを表示、または非表示にするが常にクリック可能に
+          btn.style.display = 'inline-flex';
         }
+      }
+
+      // レート表示やクレジットバッジをクリックしても管理者画面を開けるようにする
+      const creditBadge = document.querySelector('.header-credit-badge');
+      if (creditBadge) {
+        creditBadge.style.cursor = 'pointer';
+        creditBadge.title = 'クリックでAI学習・管理者パネルを開く';
+        creditBadge.onclick = () => openAdminModal();
       }
     }
 
     function openAdminModal() {
       const modal = document.getElementById('adminModal');
-      if (!modal) return;
+      if (!modal) {
+        alert('管理者モーダル要素が見つかりません');
+        return;
+      }
       updateAdminModalUI();
+      modal.classList.add('active');
       modal.classList.add('show');
+      modal.style.display = 'flex';
+      modal.style.opacity = '1';
+      modal.style.pointerEvents = 'auto';
       playSoundEffect('tap');
       startServerStatusPolling();
     }
 
     function closeAdminModal() {
       const modal = document.getElementById('adminModal');
-      if (modal) modal.classList.remove('show');
+      if (modal) {
+        modal.classList.remove('active');
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+        modal.style.opacity = '0';
+        modal.style.pointerEvents = 'none';
+      }
       playSoundEffect('tap');
       if (serverPollInterval) {
         clearInterval(serverPollInterval);
@@ -4934,7 +5009,10 @@
     async function startLocalSelfPlaySimulation() {
       if (localSimRunning) return;
       const input = document.getElementById('localSimCountInput');
-      const targetGames = Math.max(100, Math.min(50000, parseInt(input ? input.value : '1000', 10) || 1000));
+      const targetGames = Math.max(100, Math.min(1000000, parseInt(input ? input.value : '100000', 10) || 100000));
+
+      const randomRadio = document.querySelector('input[name="localSimRandomPlies"]:checked');
+      const randomPlies = randomRadio ? parseInt(randomRadio.value, 10) : 2;
 
       localSimRunning = true;
       localSimStopRequested = false;
@@ -4967,7 +5045,7 @@
         const moves = [];
 
         for (let turn = 0; turn < 64; turn++) {
-          const col = chooseSimMove(simB, simH, curP, learnedOpeningBook, learnedPositionBonuses);
+          const col = chooseSimMove(simB, simH, curP, learnedOpeningBook, learnedPositionBonuses, turn, randomPlies);
           if (col === -1) break;
 
           const z = simH[col];
@@ -4989,12 +5067,12 @@
         else if (winner === 2) p2Wins++;
         else draws++;
 
-        // Reinforcement Learning: Extract winning patterns
+        // Reinforcement Learning: Extract winning patterns up to 12 plies
         if (winner !== null && winLine !== null && moves.length >= 4) {
           const playbackB = new Uint8Array(64);
           const playbackH = new Uint8Array(16);
 
-          for (let s = 0; s < moves.length && s < 8; s++) {
+          for (let s = 0; s < moves.length && s < 12; s++) {
             const m = moves[s];
             const key = playbackB.join('');
             if (m.player === winner && learnedOpeningBook[key] === undefined) {
@@ -5018,26 +5096,33 @@
           }
         }
 
-        const now = performance.now();
-        if (now - lastUIUpdate > 80 || g === targetGames - 1) {
-          const completed = g + 1;
-          const pct = Math.round((completed / targetGames) * 100);
-          const elapsedSec = Math.max(0.01, (now - startTime) / 1000);
-          const speed = Math.round(completed / elapsedSec);
+        // バッチUI更新：100,000〜1,000,000局の高負荷時もスムーズに描画＆中断可能に
+        if ((g % 500 === 0) || g === targetGames - 1) {
+          const now = performance.now();
+          if (now - lastUIUpdate > 60 || g === targetGames - 1) {
+            const completed = g + 1;
+            const pct = Math.round((completed / targetGames) * 100);
+            const elapsedSec = Math.max(0.01, (now - startTime) / 1000);
+            const speed = Math.round(completed / elapsedSec);
+            const p1Pct = completed > 0 ? Math.round((p1Wins / completed) * 100) : 0;
+            const p2Pct = completed > 0 ? Math.round((p2Wins / completed) * 100) : 0;
 
-          if (progressFill) progressFill.style.width = `${pct}%`;
-          if (statsText) {
-            statsText.innerHTML = `実行中: <b>${completed.toLocaleString()} / ${targetGames.toLocaleString()}局 (${pct}%)</b> · 速度: ${speed.toLocaleString()}局/秒 · 先手${p1Wins}勝 / 後手${p2Wins}勝 / 引分${draws} (新定石 +${newLearned})`;
+            if (progressFill) progressFill.style.width = `${pct}%`;
+            if (statsText) {
+              statsText.innerHTML = `実行中: <b>${completed.toLocaleString()} / ${targetGames.toLocaleString()}局 (${pct}%)</b> · 速度: ${speed.toLocaleString()}局/秒 · 先手${p1Wins.toLocaleString()}勝(${p1Pct}%) / 後手${p2Wins.toLocaleString()}勝(${p2Pct}%) / 引分${draws.toLocaleString()} (新定石 +${newLearned.toLocaleString()}手)`;
+            }
+            lastUIUpdate = now;
+            await new Promise(resolve => setTimeout(resolve, 0));
           }
-          lastUIUpdate = now;
-          await new Promise(resolve => setTimeout(resolve, 0));
         }
       }
 
       // Save state
+      const simulatedInThisRun = p1Wins + p2Wins + draws;
       aiLearningMetadata = {
         lastTrainedAt: new Date().toLocaleString('ja-JP'),
         totalGamesTrained: (aiLearningMetadata.totalGamesTrained || 0),
+        totalSimulatedGames: ((aiLearningMetadata && aiLearningMetadata.totalSimulatedGames) || 0) + simulatedInThisRun,
         learnedCount: Object.keys(learnedOpeningBook).length
       };
 
@@ -5068,12 +5153,7 @@
       localSimStopRequested = true;
     }
 
-    function chooseSimMove(b, h, player, book, bonuses) {
-      const key = b.join('');
-      if (book && book[key] !== undefined && h[book[key]] < 4) {
-        return book[key];
-      }
-
+    function chooseSimMove(b, h, player, book, bonuses, turn = 0, randomPlies = 2) {
       const validCols = [];
       for (let c = 0; c < 16; c++) {
         if (h[c] < 4) validCols.push(c);
@@ -5081,7 +5161,7 @@
       if (validCols.length === 0) return -1;
       if (validCols.length === 1) return validCols[0];
 
-      // Immediate Win
+      // 1. Immediate Win
       for (let col of validCols) {
         const z = h[col];
         const idx = col + z * 16;
@@ -5091,7 +5171,7 @@
         if (win && win.winner === player) return col;
       }
 
-      // Immediate Block
+      // 2. Immediate Block
       const opp = player === 1 ? 2 : 1;
       for (let col of validCols) {
         const z = h[col];
@@ -5102,12 +5182,61 @@
         if (win && win.winner === opp) return col;
       }
 
-      // Exploration epsilon
-      if (Math.random() < 0.06) {
+      // 3. 序盤ランダム手（Exploration / 多様性探索）
+      if (turn < randomPlies) {
+        if (turn === 0) {
+          // 先手初手: 中央4列(45%), 隅4列(30%), 辺8列(25%) で多様に分散着手
+          const r = Math.random();
+          if (r < 0.45) {
+            const centers = [5, 6, 9, 10].filter(c => h[c] < 4);
+            if (centers.length > 0) return centers[Math.floor(Math.random() * centers.length)];
+          } else if (r < 0.75) {
+            const corners = [0, 3, 12, 15].filter(c => h[c] < 4);
+            if (corners.length > 0) return corners[Math.floor(Math.random() * corners.length)];
+          } else {
+            const edges = [1, 2, 4, 7, 8, 11, 13, 14].filter(c => h[c] < 4);
+            if (edges.length > 0) return edges[Math.floor(Math.random() * edges.length)];
+          }
+          return validCols[Math.floor(Math.random() * validCols.length)];
+        } else {
+          // 2〜6手目: Immediate Win/Block（絶対手）は最優先実行済み。自殺手を回避しつつランダムまたは有望手を選択
+          const safeCols = validCols.filter(col => {
+            const z = h[col];
+            if (z + 1 >= 4) return true;
+            b[col + (z + 1) * 16] = opp;
+            const oppWin = checkSimWin(b);
+            b[col + (z + 1) * 16] = 0;
+            return !oppWin;
+          });
+          const pool = safeCols.length > 0 ? safeCols : validCols;
+          if (Math.random() < 0.8) {
+            return pool[Math.floor(Math.random() * pool.length)];
+          }
+        }
+      }
+
+      // 4. 定石ブックの参照（中盤以降）
+      const key = b.join('');
+      if (book && book[key] !== undefined && h[book[key]] < 4) {
+        const bookCol = book[key];
+        const z = h[bookCol];
+        if (z + 1 < 4) {
+          b[bookCol + (z + 1) * 16] = opp;
+          const oppWin = checkSimWin(b);
+          b[bookCol + (z + 1) * 16] = 0;
+          if (!oppWin) return bookCol;
+        } else {
+          return bookCol;
+        }
+      }
+
+      // 5. Exploration epsilon (中盤でも5%で探索)
+      if (Math.random() < 0.05) {
         const centers = [5, 6, 9, 10, 0, 3, 12, 15].filter(c => h[c] < 4);
         if (centers.length > 0) return centers[Math.floor(Math.random() * centers.length)];
       }
 
+      // 6. 評価関数・Minimax評価（自殺手ペナルティつき）
       let bestScore = -Infinity;
       let bestCol = validCols[0];
 
@@ -5117,7 +5246,15 @@
         b[idx] = player;
         h[col]++;
 
-        let score = -evaluateSimBoard(b, h, opp, bonuses);
+        let suicidePenalty = 0;
+        if (z + 1 < 4) {
+          b[col + (z + 1) * 16] = opp;
+          const oppWin = checkSimWin(b);
+          b[col + (z + 1) * 16] = 0;
+          if (oppWin) suicidePenalty = 50000;
+        }
+
+        let score = -evaluateSimBoard(b, h, opp, bonuses) - suicidePenalty;
 
         b[idx] = 0;
         h[col]--;

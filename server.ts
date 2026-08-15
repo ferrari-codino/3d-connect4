@@ -323,14 +323,10 @@ function chooseFastSimMove(
   depth: number,
   book: Record<string, number>,
   bonuses: Record<string, number>,
-  epsilon: number = 0.05
+  epsilon: number = 0.05,
+  turn: number = 0,
+  randomPlies: number = 2
 ): number {
-  // Check book
-  const key = b.join("");
-  if (book[key] !== undefined && h[book[key]] < 4) {
-    return book[key];
-  }
-
   // Valid moves
   const validCols: number[] = [];
   for (let c = 0; c < 16; c++) {
@@ -360,6 +356,52 @@ function chooseFastSimMove(
     if (win && win.winner === opp) return col;
   }
 
+  // 3. Opening Exploration
+  if (turn < randomPlies) {
+    if (turn === 0) {
+      const r = Math.random();
+      if (r < 0.45) {
+        const centers = [5, 6, 9, 10].filter((c) => h[c] < 4);
+        if (centers.length > 0) return centers[Math.floor(Math.random() * centers.length)];
+      } else if (r < 0.75) {
+        const corners = [0, 3, 12, 15].filter((c) => h[c] < 4);
+        if (corners.length > 0) return corners[Math.floor(Math.random() * corners.length)];
+      } else {
+        const edges = [1, 2, 4, 7, 8, 11, 13, 14].filter((c) => h[c] < 4);
+        if (edges.length > 0) return edges[Math.floor(Math.random() * edges.length)];
+      }
+      return validCols[Math.floor(Math.random() * validCols.length)];
+    } else {
+      const safeCols = validCols.filter((col) => {
+        const z = h[col];
+        if (z + 1 >= 4) return true;
+        b[col + (z + 1) * 16] = opp;
+        const oppWin = checkBoardWin(b);
+        b[col + (z + 1) * 16] = 0;
+        return !oppWin;
+      });
+      const pool = safeCols.length > 0 ? safeCols : validCols;
+      if (Math.random() < 0.8) {
+        return pool[Math.floor(Math.random() * pool.length)];
+      }
+    }
+  }
+
+  // 4. Check book
+  const key = b.join("");
+  if (book[key] !== undefined && h[book[key]] < 4) {
+    const bookCol = book[key];
+    const z = h[bookCol];
+    if (z + 1 < 4) {
+      b[bookCol + (z + 1) * 16] = opp;
+      const oppWin = checkBoardWin(b);
+      b[bookCol + (z + 1) * 16] = 0;
+      if (!oppWin) return bookCol;
+    } else {
+      return bookCol;
+    }
+  }
+
   // Exploration epsilon (random strategic move among top 3)
   if (Math.random() < epsilon) {
     const centers = [5, 6, 9, 10, 0, 3, 12, 15].filter((c) => h[c] < 4);
@@ -378,7 +420,15 @@ function chooseFastSimMove(
     b[idx] = player;
     h[col]++;
 
-    let score = -evaluateSimBoard(b, h, opp, bonuses);
+    let suicidePenalty = 0;
+    if (z + 1 < 4) {
+      b[col + (z + 1) * 16] = opp;
+      const oppWin = checkBoardWin(b);
+      b[col + (z + 1) * 16] = 0;
+      if (oppWin) suicidePenalty = 50000;
+    }
+
+    let score = -evaluateSimBoard(b, h, opp, bonuses) - suicidePenalty;
 
     // One level deeper lookahead for opponent trap avoidance
     if (depth >= 2) {
@@ -492,7 +542,9 @@ async function runServerSelfPlayBatch(targetGames: number) {
         2,
         localBook,
         localBonuses,
-        0.08
+        0.08,
+        turn,
+        2
       );
       if (col === -1) break;
 
@@ -517,12 +569,12 @@ async function runServerSelfPlayBatch(targetGames: number) {
     else if (winner === 2) simStatus.p2Wins++;
     else simStatus.draws++;
 
-    // Reinforcement Learning: Extract winning patterns from victorious play
+    // Reinforcement Learning: Extract winning patterns from victorious play up to 12 plies
     if (winner !== null && winLine !== null && moves.length >= 4) {
       const simB = new Uint8Array(64);
       const simH = new Uint8Array(16);
 
-      for (let s = 0; s < moves.length && s < 8; s++) {
+      for (let s = 0; s < moves.length && s < 12; s++) {
         const m = moves[s];
         const key = simB.join("");
         if (m.player === winner && localBook[key] === undefined) {
