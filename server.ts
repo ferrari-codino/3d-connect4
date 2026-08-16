@@ -150,8 +150,9 @@ function loadServerStorage() {
       globalAiModel.learnedBook = { ...peakAiModel.learnedBook, ...globalAiModel.learnedBook };
       globalAiModel.posBonuses = { ...peakAiModel.posBonuses, ...globalAiModel.posBonuses };
       globalAiModel.meta.totalSimulatedGames = Math.max(globalAiModel.meta.totalSimulatedGames || 0, peakAiModel.meta.totalSimulatedGames || 0);
-      globalAiModel.meta.learnedCount = Object.keys(globalAiModel.learnedBook).length;
+      globalAiModel.meta.learnedCount = Math.max(globalAiModel.meta.learnedCount || 0, peakAiModel.meta.learnedCount || 0, Object.keys(globalAiModel.learnedBook).length);
       globalAiModel.meta.rating = Math.max(globalAiModel.meta.rating || 2000, peakAiModel.meta.rating || 2000);
+      globalAiModel.meta.lastTrainedAt = peakAiModel.meta.lastTrainedAt || globalAiModel.meta.lastTrainedAt;
     }
 
     if (fs.existsSync(GAMES_FILE)) {
@@ -172,7 +173,7 @@ function saveServerStorage() {
     fs.writeFileSync(MODEL_FILE, JSON.stringify(globalAiModel, null, 2), "utf-8");
     fs.writeFileSync(GAMES_FILE, JSON.stringify(storedGames, null, 2), "utf-8");
 
-    // Check and save Peak Model
+    // Check and save Peak Model (Only if strictly improved and non-empty)
     const currentSims = globalAiModel.meta.totalSimulatedGames || 0;
     const currentLearned = globalAiModel.meta.learnedCount || 0;
     const currentRating = globalAiModel.meta.rating || 2000;
@@ -181,7 +182,11 @@ function saveServerStorage() {
     const peakLearned = (peakAiModel && peakAiModel.meta && peakAiModel.meta.learnedCount) || 0;
     const peakRating = (peakAiModel && peakAiModel.meta && peakAiModel.meta.rating) || 2000;
 
-    if (!peakAiModel || currentRating >= peakRating || currentSims >= peakSims || currentLearned >= peakLearned) {
+    const isImproved = (currentSims > peakSims && currentSims > 0) ||
+                      (currentLearned > peakLearned && currentLearned > 0) ||
+                      (currentRating > peakRating && currentRating > 2000);
+
+    if (isImproved || (!peakAiModel && (currentSims > 0 || currentLearned > 0))) {
       peakAiModel = JSON.parse(JSON.stringify(globalAiModel));
       fs.writeFileSync(PEAK_MODEL_FILE, JSON.stringify(peakAiModel, null, 2), "utf-8");
     }

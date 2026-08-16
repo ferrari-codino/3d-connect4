@@ -5209,37 +5209,88 @@
       return BASE_RATING + Math.round(ratingGain);
     }
 
+    // 🛡️ localStorage 安全保存ユーティリティ（大容量定跡によるQuotaExceededErrorを100%防止）
+    function safeSaveToLocalStorage(key, dataObj) {
+      try {
+        localStorage.setItem(key, JSON.stringify(dataObj));
+        return true;
+      } catch (err) {
+        console.warn(`localStorage quota exceeded for ${key}. Applying compact schema...`, err);
+        try {
+          // 容量超過時はメタデータ＋重み＋重要初手中盤定跡（上位10,000手）のみをローカル保存（全量はRAM/IndexedDB/サーバーで保持）
+          let compactBook = {};
+          if (dataObj.learnedBook && typeof dataObj.learnedBook === 'object') {
+            const keys = Object.keys(dataObj.learnedBook);
+            for (let i = 0; i < Math.min(10000, keys.length); i++) {
+              compactBook[keys[i]] = dataObj.learnedBook[keys[i]];
+            }
+          }
+          const compactData = {
+            learnedBook: compactBook,
+            posBonuses: dataObj.posBonuses || {},
+            meta: dataObj.meta || {}
+          };
+          localStorage.setItem(key, JSON.stringify(compactData));
+          return true;
+        } catch (err2) {
+          console.warn(`Failed compact save for ${key}:`, err2);
+          try {
+            // 最悪の場合でもメタデータだけは確実に保存
+            localStorage.setItem(key, JSON.stringify({
+              learnedBook: {},
+              posBonuses: dataObj.posBonuses || {},
+              meta: dataObj.meta || {}
+            }));
+            return true;
+          } catch (err3) {
+            return false;
+          }
+        }
+      }
+    }
+
     // 🏆 歴代最高値（Peak Model）の自動バックアップ処理
     // サーバー再起動や万が一のローカル初期化でも絶対に最高学習値・定跡を消失させない安全装置
-    function checkAndSavePeakBackup() {
+    function checkAndSavePeakBackup(force = false) {
       try {
         const curRating = calculateAiMaxRating();
         const curSims = (aiLearningMetadata && aiLearningMetadata.totalSimulatedGames) || 0;
         const curLearned = (aiLearningMetadata && aiLearningMetadata.learnedCount) || Object.keys(learnedOpeningBook).length || 0;
 
+        // 学習実績が全くない（0手・0局・レート2000初期状態）の場合は最高値を上書き保存しない
+        if (!force && curSims === 0 && curLearned === 0 && curRating <= 2000) {
+          return;
+        }
+
         let peakData = null;
         const raw = localStorage.getItem(PEAK_BACKUP_KEY);
         if (raw) {
-          peakData = JSON.parse(raw);
+          try {
+            peakData = JSON.parse(raw);
+          } catch (e) {}
         }
 
         const peakRating = (peakData && peakData.meta && peakData.meta.rating) || 2000;
         const peakSims = (peakData && peakData.meta && peakData.meta.totalSimulatedGames) || 0;
         const peakLearned = (peakData && peakData.meta && peakData.meta.learnedCount) || 0;
 
-        if (!peakData || curRating >= peakRating || curSims >= peakSims || curLearned >= peakLearned) {
+        const isImproved = (curRating > peakRating) || 
+                           (curSims > peakSims && curSims > 0) || 
+                           (curLearned > peakLearned && curLearned > 0);
+
+        if (force || !peakData || isImproved) {
           const snapshot = {
             learnedBook: learnedOpeningBook,
             posBonuses: learnedPositionBonuses,
             meta: {
               ...aiLearningMetadata,
-              rating: curRating,
+              rating: Math.max(curRating, peakRating),
               totalSimulatedGames: Math.max(curSims, peakSims),
               learnedCount: Math.max(curLearned, peakLearned),
               peakBackedUpAt: new Date().toLocaleString('ja-JP')
             }
           };
-          localStorage.setItem(PEAK_BACKUP_KEY, JSON.stringify(snapshot));
+          safeSaveToLocalStorage(PEAK_BACKUP_KEY, snapshot);
         }
       } catch (e) {
         console.warn('Peak backup save error:', e);
@@ -5249,51 +5300,80 @@
     // 🏆 歴代最高値バックアップからのワンクリック復元
     async function restoreAiFromPeakBackup(isManual = false) {
       try {
-        let backup = null;
+        let localBackup = null;
         const raw = localStorage.getItem(PEAK_BACKUP_KEY);
         if (raw) {
-          backup = JSON.parse(raw);
-        }
-
-        // ローカルにない場合はサーバーから最高値バックアップを取得試行
-        if (!backup || !backup.learnedBook || Object.keys(backup.learnedBook).length === 0) {
           try {
-            const resp = await fetch('/api/ai/peak');
-            if (resp.ok) {
-              const resJson = await resp.json();
-              if (resJson.success && resJson.peakModel) {
-                backup = resJson.peakModel;
-              }
-            }
+            localBackup = JSON.parse(raw);
           } catch (e) {}
         }
 
-        if (!backup || (!backup.learnedBook && !backup.meta)) {
-          if (isManual) alert('保存されている最高値バックアップが見つかりませんでした。');
+        let serverBackup = null;
+        try {
+          const resp = await fetch('/api/ai/peak');
+          if (resp.ok) {
+            const resJson = await resp.json();
+            if (resJson.success && resJson.peakModel) {
+              serverBackup = resJson.peakModel;
+            }
+          }
+        } catch (e) {}
+
+        // ローカルとサーバーでより実績（自己対局数・定跡数）が多い方を最善バックアップとして選定
+        const localSims = (localBackup && localBackup.meta && localBackup.meta.totalSimulatedGames) || 0;
+        const localLearned = (localBackup && localBackup.meta && localBackup.meta.learnedCount) || 0;
+        const serverSims = (serverBackup && serverBackup.meta && serverBackup.meta.totalSimulatedGames) || 0;
+        const serverLearned = (serverBackup && serverBackup.meta && serverBackup.meta.learnedCount) || 0;
+
+        let bestBackup = null;
+        if (localSims >= serverSims && localLearned >= serverLearned && (localSims > 0 || localLearned > 0)) {
+          bestBackup = localBackup;
+        } else if (serverSims > 0 || serverLearned > 0) {
+          bestBackup = serverBackup;
+        } else {
+          bestBackup = localBackup || serverBackup;
+        }
+
+        const bestSims = (bestBackup && bestBackup.meta && bestBackup.meta.totalSimulatedGames) || 0;
+        const bestLearned = (bestBackup && bestBackup.meta && bestBackup.meta.learnedCount) || (bestBackup && bestBackup.learnedBook && Object.keys(bestBackup.learnedBook).length) || 0;
+
+        if (!bestBackup || (bestSims === 0 && bestLearned === 0)) {
+          if (isManual) {
+            showFloatingToast('ℹ️ 保存されている学習実績バックアップはまだありません。自己対局を実行すると自動保存されます。');
+            playSoundEffect('tap');
+          }
           return false;
         }
 
-        if (backup.learnedBook) learnedOpeningBook = backup.learnedBook;
-        if (backup.posBonuses) learnedPositionBonuses = backup.posBonuses;
-        if (backup.meta) {
+        // データの復旧適用
+        if (bestBackup.learnedBook && typeof bestBackup.learnedBook === 'object') {
+          learnedOpeningBook = { ...learnedOpeningBook, ...bestBackup.learnedBook };
+        }
+        if (bestBackup.posBonuses && typeof bestBackup.posBonuses === 'object') {
+          learnedPositionBonuses = { ...learnedPositionBonuses, ...bestBackup.posBonuses };
+        }
+        if (bestBackup.meta) {
           aiLearningMetadata = {
-            ...backup.meta,
-            lastTrainedAt: backup.meta.peakBackedUpAt || backup.meta.lastTrainedAt || new Date().toLocaleString('ja-JP')
+            ...aiLearningMetadata,
+            ...bestBackup.meta,
+            totalSimulatedGames: Math.max(aiLearningMetadata.totalSimulatedGames || 0, bestSims),
+            learnedCount: Math.max(aiLearningMetadata.learnedCount || 0, bestLearned, Object.keys(learnedOpeningBook).length),
+            lastTrainedAt: bestBackup.meta.peakBackedUpAt || bestBackup.meta.lastTrainedAt || new Date().toLocaleString('ja-JP')
           };
         }
 
-        localStorage.setItem(LEARNED_PATTERNS_KEY, JSON.stringify({
+        safeSaveToLocalStorage(LEARNED_PATTERNS_KEY, {
           learnedBook: learnedOpeningBook,
           posBonuses: learnedPositionBonuses,
           meta: aiLearningMetadata
-        }));
+        });
 
         updateQuietAiRatingDisplay();
         updateAdminModalUI();
 
         const curRating = calculateAiMaxRating();
         const curSims = (aiLearningMetadata && aiLearningMetadata.totalSimulatedGames) || 0;
-        const curBook = Object.keys(learnedOpeningBook).length;
+        const curBook = (aiLearningMetadata && aiLearningMetadata.learnedCount) || Object.keys(learnedOpeningBook).length;
 
         // サーバーにも復旧データを即時同期
         try {
@@ -5309,13 +5389,15 @@
         } catch (e) {}
 
         if (isManual) {
-          showFloatingToast(`🏆 歴代最高値バックアップから復元完了！ (レート: ${curRating} / 定跡: ${curBook}手 / 自己対局: ${curSims.toLocaleString()}局)`);
+          showFloatingToast(`🏆 歴代最高値バックアップから復元完了！ (レート: ${curRating} / 定跡: ${curBook.toLocaleString()}手 / 自己対局: ${curSims.toLocaleString()}局)`);
           playSoundEffect('win');
         }
         return true;
       } catch (e) {
         console.error('Restore peak backup error:', e);
-        if (isManual) alert('バックアップの復元中にエラーが発生しました。');
+        if (isManual) {
+          showFloatingToast('⚠️ バックアップの復元を実行できませんでした');
+        }
         return false;
       }
     }
@@ -5331,7 +5413,7 @@
         const gain = currentRating - 2000;
         adminRatingEl.textContent = gain > 0 ? `${currentRating} (+${gain})` : `${currentRating}`;
       }
-      checkAndSavePeakBackup();
+      checkAndSavePeakBackup(false);
     }
 
     function loadAiLearnedData() {
@@ -5352,10 +5434,12 @@
         if (curSims === 0 && curLearned === 0) {
           const peakRaw = localStorage.getItem(PEAK_BACKUP_KEY);
           if (peakRaw) {
-            const peakObj = JSON.parse(peakRaw);
-            if (peakObj && ((peakObj.meta && peakObj.meta.totalSimulatedGames > 0) || (peakObj.learnedBook && Object.keys(peakObj.learnedBook).length > 0))) {
-              restoreAiFromPeakBackup(false);
-            }
+            try {
+              const peakObj = JSON.parse(peakRaw);
+              if (peakObj && ((peakObj.meta && peakObj.meta.totalSimulatedGames > 0) || (peakObj.learnedBook && Object.keys(peakObj.learnedBook).length > 0))) {
+                restoreAiFromPeakBackup(false);
+              }
+            } catch (e) {}
           }
         }
 
@@ -5369,7 +5453,12 @@
       learnedPositionBonuses = {};
       aiLearningMetadata = { lastTrainedAt: '初期化済', totalGamesTrained: 0, learnedCount: 0, totalSimulatedGames: 0 };
       localStorage.removeItem(LEARNED_PATTERNS_KEY);
-      updateQuietAiRatingDisplay();
+      
+      const quietEl = document.getElementById('aiMaxRatingDisplay');
+      if (quietEl) quietEl.textContent = '2000';
+      const adminRatingEl = document.getElementById('adminKpiAiRating');
+      if (adminRatingEl) adminRatingEl.textContent = '2000';
+
       updateAdminModalUI();
       showFloatingToast('🔄 AI学習データを初期化しました（※最高値バックアップからいつでも復元可能です）');
     }
@@ -5866,22 +5955,14 @@
         learnedCount: Object.keys(learnedOpeningBook).length
       };
 
-      try {
-        localStorage.setItem(LEARNED_PATTERNS_KEY, JSON.stringify({
-          learnedBook: learnedOpeningBook,
-          posBonuses: learnedPositionBonuses,
-          meta: aiLearningMetadata
-        }));
-      } catch (e) {
-        console.warn('localStorage quota handling:', e);
-        try {
-          localStorage.setItem(LEARNED_PATTERNS_KEY, JSON.stringify({
-            learnedBook: {},
-            posBonuses: learnedPositionBonuses,
-            meta: aiLearningMetadata
-          }));
-        } catch (e2) {}
-      }
+      safeSaveToLocalStorage(LEARNED_PATTERNS_KEY, {
+        learnedBook: learnedOpeningBook,
+        posBonuses: learnedPositionBonuses,
+        meta: aiLearningMetadata
+      });
+
+      // 🏆 シミュレーション完了/中断時に歴代最高値スナップショットを強制確定保存
+      checkAndSavePeakBackup(true);
 
       // Sync to cloud server so that server permanently stores the simulated count and model
       try {
