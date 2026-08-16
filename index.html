@@ -5840,6 +5840,17 @@
             if (statsText) {
               statsText.innerHTML = `実行中: <b>${completed.toLocaleString()} / ${targetGames.toLocaleString()}局 (${pct}%)</b> · 速度: ${speed.toLocaleString()}局/秒 · 先手${p1Wins.toLocaleString()}勝(${p1Pct}%) / 後手${p2Wins.toLocaleString()}勝(${p2Pct}%) / 引分${draws.toLocaleString()} (新定跡 +${newLearned.toLocaleString()}手)`;
             }
+            // 上部KPIカードおよび解析レポートの定跡数・局数表示もリアルタイムに連動更新
+            const kpiLearnedEl = document.getElementById('adminKpiLearnedPatterns');
+            if (kpiLearnedEl) {
+              const liveCount = ((aiLearningMetadata && aiLearningMetadata.learnedCount) || 0) + newLearned;
+              kpiLearnedEl.textContent = `${liveCount.toLocaleString()}手 (抽出中)`;
+            }
+            const rptLearnedEl = document.getElementById('rptStatLearnedMoves');
+            if (rptLearnedEl) {
+              const liveCount = ((aiLearningMetadata && aiLearningMetadata.learnedCount) || 0) + newLearned;
+              rptLearnedEl.textContent = `${liveCount.toLocaleString()}手`;
+            }
             lastUIUpdate = now;
             await new Promise(resolve => setTimeout(resolve, 0));
           }
