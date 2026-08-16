@@ -673,7 +673,7 @@ async function runServerSelfPlayBatch(targetGames: number) {
   globalAiModel.learnedBook = localBook;
   globalAiModel.posBonuses = localBonuses;
   globalAiModel.meta.totalSimulatedGames = (globalAiModel.meta.totalSimulatedGames || 0) + simStatus.currentCount;
-  globalAiModel.meta.learnedCount = Object.keys(localBook).length;
+  globalAiModel.meta.learnedCount = Math.max((globalAiModel.meta.learnedCount || 0) + newLearned, Object.keys(localBook).length);
   globalAiModel.meta.lastTrainedAt = new Date().toLocaleString("ja-JP");
   globalAiModel.meta.rating = calculateRating(
     storedGames.length,
@@ -825,11 +825,16 @@ app.post("/api/ai/sync", (req, res) => {
       if (clientData.meta && typeof clientData.meta === "object") {
         const clientSims = Number(clientData.meta.totalSimulatedGames) || 0;
         const currentSims = Number(globalAiModel.meta.totalSimulatedGames) || 0;
+        const clientLearned = Number(clientData.meta.learnedCount) || 0;
+        const currentLearned = Number(globalAiModel.meta.learnedCount) || 0;
+
         globalAiModel.meta.totalSimulatedGames = Math.max(currentSims, clientSims);
         globalAiModel.meta.totalGamesTrained = Math.max(globalAiModel.meta.totalGamesTrained || 0, Number(clientData.meta.totalGamesTrained) || 0);
+        globalAiModel.meta.learnedCount = Math.max(currentLearned, clientLearned, Object.keys(globalAiModel.learnedBook).length);
         globalAiModel.meta.lastTrainedAt = clientData.meta.lastTrainedAt || globalAiModel.meta.lastTrainedAt;
+      } else {
+        globalAiModel.meta.learnedCount = Object.keys(globalAiModel.learnedBook).length;
       }
-      globalAiModel.meta.learnedCount = Object.keys(globalAiModel.learnedBook).length;
       globalAiModel.meta.rating = calculateRating(
         globalAiModel.meta.totalGamesTrained,
         globalAiModel.meta.learnedCount,
