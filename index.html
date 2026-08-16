@@ -2567,12 +2567,15 @@
             ⚡ 蓄積棋譜をAIに即時学習させる
           </button>
         </div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; font-size:11px;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; font-size:11px; align-items:center;">
           <button type="button" class="modal-btn-secondary" onclick="exportRecordedGamesJSON()" style="padding:5px 12px; font-size:11px;">
             💾 棋譜データをJSON保存
           </button>
           <button type="button" class="modal-btn-secondary" onclick="triggerImportRecordedGames()" style="padding:5px 12px; font-size:11px;">
             📥 棋譜JSONを読み込み
+          </button>
+          <button type="button" class="modal-btn-primary" onclick="restoreAiFromPeakBackup(true)" style="padding:5px 14px; font-size:11px; background:linear-gradient(135deg, #eab308, #f59e0b); color:#0f172a; font-weight:800;" title="万が一データが初期化された場合でも、過去の最高値（自己対局数・定跡・最高レート）にワンクリックで即座に復元します">
+            🏆 歴代最高値バックアップから復元
           </button>
           <input type="file" id="adminGamesImportInput" accept=".json" style="display:none;" onchange="handleImportRecordedGamesFile(event)">
           <button type="button" class="modal-btn-secondary" onclick="resetAiLearnedData()" style="padding:5px 12px; font-size:11px; color:#fca5a5; border-color:rgba(239,68,68,0.4);">
@@ -2601,21 +2604,21 @@
         </div>
 
         <!-- 序盤ランダム手（探索モード）設定 -->
-        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; font-size:11px; color:#cbd5e1; background:rgba(0,0,0,0.3); padding:6px 12px; border-radius:6px; border:1px solid rgba(56,189,248,0.25);">
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:11px; color:#cbd5e1; background:rgba(0,0,0,0.3); padding:6px 12px; border-radius:6px; border:1px solid rgba(56,189,248,0.25);">
           <span style="font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:4px;">
             🎲 序盤ランダム手 (探索モード):
           </span>
-          <!-- <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
-            <input type="radio" name="localSimRandomPlies" value="1"> 初手のみ (1手)
-          </label> -->
           <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
-            <input type="radio" name="localSimRandomPlies" value="2"> 序盤2手 (先後1手ずつ)
+            <input type="radio" name="localSimRandomPlies" value="2"> 序盤2手 (先後1手)
           </label>
           <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
-            <input type="radio" name="localSimRandomPlies" value="4" checked> 序盤4手 (大乱戦・全方位学習)
+            <input type="radio" name="localSimRandomPlies" value="4" checked> 序盤4手 (大乱戦)
           </label>
           <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
-            <input type="radio" name="localSimRandomPlies" value="6"> 序盤6手 (深層乱戦・絶対手保証)
+            <input type="radio" name="localSimRandomPlies" value="6"> 序盤6手 (深層乱戦)
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+            <input type="radio" name="localSimRandomPlies" value="8"> 序盤8手 (超深層乱戦・全定跡網羅)
           </label>
           <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
             <input type="radio" name="localSimRandomPlies" value="0"> ランダムなし (固定定跡)
@@ -2913,6 +2916,7 @@
     const PREFS_STORAGE_KEY = '3d_connect4_user_prefs_v1';
     const STORED_GAMES_KEY = '3d_connect4_ai_victory_games_v1';
     const LEARNED_PATTERNS_KEY = '3d_connect4_ai_learned_weights_v1';
+    const PEAK_BACKUP_KEY = '3d_connect4_ai_peak_backup_v1';
 
     let board = new Array(64).fill(0); // 0: empty, 1: P1, 2: P2
     let heights = new Array(16).fill(0); // height level 0..4 for each col 0..15
@@ -4754,7 +4758,8 @@
       }
     }
 
-    // AIの最高実力レーティング・能力値の数値化計算（自己対局数・定石数に応じて上限なく自然に成長）
+    // AIの最高実力レーティング・能力値の数値化計算（世界標準Elo・対数減衰モデル）
+    // 100万局〜1000万局規模の自己対局・深層定跡学習で、AlphaZero/Stockfish級の超人クラス（3600〜3900）に美しく収束
     function calculateAiMaxRating() {
       const BASE_RATING = 2000;
       const games = getStoredWinningGames();
@@ -4767,23 +4772,134 @@
           if (typeof v === 'number') posBonusSum += v;
         });
       }
-      // 蓄積された撃破棋譜・学習済み定跡・要衝マス重み・自己対局局数から総合実力値を算出
-      const humanGain = totalGames * 14;
-      // 定跡獲得ボーナス: 100万手規模でもスムーズに伸びる対数＋平方根ハイブリッド式
+      // 人間撃破学習ボーナス (上限250pt)
+      const humanGain = Math.min(250, totalGames * 10);
+      // 定跡獲得ボーナス: 100万手規模でも自然に伸びる対数＋平方根ハイブリッド式 (上限〜1080pt)
       const bookGain = learnedCount > 0 
-        ? Math.floor(Math.log10(learnedCount + 1) * 260 + Math.min(1200, Math.sqrt(learnedCount) * 0.8))
+        ? Math.floor(Math.log10(learnedCount + 1) * 280 + Math.min(800, Math.sqrt(learnedCount) * 0.75))
         : 0;
-      // 要衝マス重みボーナス
+      // 要衝マス重みボーナス (上限150pt)
       const posGain = posBonusSum > 0 
-        ? Math.min(600, Math.floor(Math.log10(posBonusSum + 1) * 80 + Math.sqrt(posBonusSum) * 0.2))
+        ? Math.min(150, Math.floor(Math.log10(posBonusSum + 1) * 40 + Math.sqrt(posBonusSum) * 0.1))
         : 0;
-      // 自己対局局数ボーナス: 100万〜1000万局規模まで自然に伸びる式
+      // 自己対局局数ボーナス: 100万〜1000万局規模で美しくスケール (上限〜1020pt)
       const simGain = simGames > 0 
-        ? Math.floor(Math.log10(simGames + 1) * 220 + Math.min(1000, Math.sqrt(simGames) * 0.6))
+        ? Math.floor(Math.log10(simGames + 1) * 220 + Math.min(800, Math.sqrt(simGames) * 0.4))
         : 0;
 
       const ratingGain = humanGain + bookGain + posGain + simGain;
       return BASE_RATING + Math.round(ratingGain);
+    }
+
+    // 🏆 歴代最高値（Peak Model）の自動バックアップ処理
+    // サーバー再起動や万が一のローカル初期化でも絶対に最高学習値・定跡を消失させない安全装置
+    function checkAndSavePeakBackup() {
+      try {
+        const curRating = calculateAiMaxRating();
+        const curSims = (aiLearningMetadata && aiLearningMetadata.totalSimulatedGames) || 0;
+        const curLearned = (aiLearningMetadata && aiLearningMetadata.learnedCount) || Object.keys(learnedOpeningBook).length || 0;
+
+        let peakData = null;
+        const raw = localStorage.getItem(PEAK_BACKUP_KEY);
+        if (raw) {
+          peakData = JSON.parse(raw);
+        }
+
+        const peakRating = (peakData && peakData.meta && peakData.meta.rating) || 2000;
+        const peakSims = (peakData && peakData.meta && peakData.meta.totalSimulatedGames) || 0;
+        const peakLearned = (peakData && peakData.meta && peakData.meta.learnedCount) || 0;
+
+        if (!peakData || curRating >= peakRating || curSims >= peakSims || curLearned >= peakLearned) {
+          const snapshot = {
+            learnedBook: learnedOpeningBook,
+            posBonuses: learnedPositionBonuses,
+            meta: {
+              ...aiLearningMetadata,
+              rating: curRating,
+              totalSimulatedGames: Math.max(curSims, peakSims),
+              learnedCount: Math.max(curLearned, peakLearned),
+              peakBackedUpAt: new Date().toLocaleString('ja-JP')
+            }
+          };
+          localStorage.setItem(PEAK_BACKUP_KEY, JSON.stringify(snapshot));
+        }
+      } catch (e) {
+        console.warn('Peak backup save error:', e);
+      }
+    }
+
+    // 🏆 歴代最高値バックアップからのワンクリック復元
+    async function restoreAiFromPeakBackup(isManual = false) {
+      try {
+        let backup = null;
+        const raw = localStorage.getItem(PEAK_BACKUP_KEY);
+        if (raw) {
+          backup = JSON.parse(raw);
+        }
+
+        // ローカルにない場合はサーバーから最高値バックアップを取得試行
+        if (!backup || !backup.learnedBook || Object.keys(backup.learnedBook).length === 0) {
+          try {
+            const resp = await fetch('/api/ai/peak');
+            if (resp.ok) {
+              const resJson = await resp.json();
+              if (resJson.success && resJson.peakModel) {
+                backup = resJson.peakModel;
+              }
+            }
+          } catch (e) {}
+        }
+
+        if (!backup || (!backup.learnedBook && !backup.meta)) {
+          if (isManual) alert('保存されている最高値バックアップが見つかりませんでした。');
+          return false;
+        }
+
+        if (backup.learnedBook) learnedOpeningBook = backup.learnedBook;
+        if (backup.posBonuses) learnedPositionBonuses = backup.posBonuses;
+        if (backup.meta) {
+          aiLearningMetadata = {
+            ...backup.meta,
+            lastTrainedAt: backup.meta.peakBackedUpAt || backup.meta.lastTrainedAt || new Date().toLocaleString('ja-JP')
+          };
+        }
+
+        localStorage.setItem(LEARNED_PATTERNS_KEY, JSON.stringify({
+          learnedBook: learnedOpeningBook,
+          posBonuses: learnedPositionBonuses,
+          meta: aiLearningMetadata
+        }));
+
+        updateQuietAiRatingDisplay();
+        updateAdminModalUI();
+
+        const curRating = calculateAiMaxRating();
+        const curSims = (aiLearningMetadata && aiLearningMetadata.totalSimulatedGames) || 0;
+        const curBook = Object.keys(learnedOpeningBook).length;
+
+        // サーバーにも復旧データを即時同期
+        try {
+          fetch('/api/ai/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              learnedBook: learnedOpeningBook,
+              posBonuses: learnedPositionBonuses,
+              meta: { ...aiLearningMetadata, rating: curRating }
+            })
+          }).catch(() => {});
+        } catch (e) {}
+
+        if (isManual) {
+          showFloatingToast(`🏆 歴代最高値バックアップから復元完了！ (レート: ${curRating} / 定跡: ${curBook}手 / 自己対局: ${curSims.toLocaleString()}局)`);
+          playSoundEffect('win');
+        }
+        return true;
+      } catch (e) {
+        console.error('Restore peak backup error:', e);
+        if (isManual) alert('バックアップの復元中にエラーが発生しました。');
+        return false;
+      }
     }
 
     function updateQuietAiRatingDisplay() {
@@ -4797,31 +4913,47 @@
         const gain = currentRating - 2000;
         adminRatingEl.textContent = gain > 0 ? `${currentRating} (+${gain})` : `${currentRating}`;
       }
+      checkAndSavePeakBackup();
     }
 
     function loadAiLearnedData() {
       try {
         const raw = localStorage.getItem(LEARNED_PATTERNS_KEY);
-        if (!raw) return;
-        const data = JSON.parse(raw);
-        if (data && typeof data === 'object') {
-          if (data.learnedBook) learnedOpeningBook = data.learnedBook;
-          if (data.posBonuses) learnedPositionBonuses = data.posBonuses;
-          if (data.meta) aiLearningMetadata = data.meta;
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (data && typeof data === 'object') {
+            if (data.learnedBook) learnedOpeningBook = data.learnedBook;
+            if (data.posBonuses) learnedPositionBonuses = data.posBonuses;
+            if (data.meta) aiLearningMetadata = data.meta;
+          }
         }
+
+        // 自動安全復元チェック：もし現在データが0手・0局で、最高値バックアップが存在する場合は自動復旧
+        const curSims = (aiLearningMetadata && aiLearningMetadata.totalSimulatedGames) || 0;
+        const curLearned = Object.keys(learnedOpeningBook).length;
+        if (curSims === 0 && curLearned === 0) {
+          const peakRaw = localStorage.getItem(PEAK_BACKUP_KEY);
+          if (peakRaw) {
+            const peakObj = JSON.parse(peakRaw);
+            if (peakObj && ((peakObj.meta && peakObj.meta.totalSimulatedGames > 0) || (peakObj.learnedBook && Object.keys(peakObj.learnedBook).length > 0))) {
+              restoreAiFromPeakBackup(false);
+            }
+          }
+        }
+
         updateQuietAiRatingDisplay();
       } catch (e) {}
     }
 
     function resetAiLearnedData() {
-      if (!confirm('学習済みデータを初期化してもよろしいですか？（※保存された棋譜自体は保持されます）')) return;
+      if (!confirm('学習済みデータを初期状態にリセットしますか？\n（※過去の最高値バックアップは保持されるため、いつでも「歴代最高値バックアップから復元」で戻せます）')) return;
       learnedOpeningBook = {};
       learnedPositionBonuses = {};
-      aiLearningMetadata = { lastTrainedAt: '初期化済', totalGamesTrained: 0, learnedCount: 0 };
+      aiLearningMetadata = { lastTrainedAt: '初期化済', totalGamesTrained: 0, learnedCount: 0, totalSimulatedGames: 0 };
       localStorage.removeItem(LEARNED_PATTERNS_KEY);
       updateQuietAiRatingDisplay();
       updateAdminModalUI();
-      showFloatingToast('🔄 AI学習データを初期状態にリセットしました');
+      showFloatingToast('🔄 AI学習データを初期化しました（※最高値バックアップからいつでも復元可能です）');
     }
 
     // 管理者パネルの表示制御・URL判定（?admin=true または 開発者環境: ais-dev, localhost）

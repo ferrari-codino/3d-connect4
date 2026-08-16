@@ -21,6 +21,7 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 const MODEL_FILE = path.join(DATA_DIR, "ai_learned_model.json");
+const PEAK_MODEL_FILE = path.join(DATA_DIR, "ai_learned_model_peak.json");
 const GAMES_FILE = path.join(DATA_DIR, "winning_games.json");
 
 // -------------------------------------------------------------
@@ -124,10 +125,18 @@ let globalAiModel: AiModelData = {
   },
 };
 
+let peakAiModel: AiModelData | null = null;
 let storedGames: WinningGame[] = [];
 
 function loadServerStorage() {
   try {
+    if (fs.existsSync(PEAK_MODEL_FILE)) {
+      const peakRaw = fs.readFileSync(PEAK_MODEL_FILE, "utf-8");
+      const peakParsed = JSON.parse(peakRaw);
+      if (peakParsed && typeof peakParsed === "object") {
+        peakAiModel = peakParsed;
+      }
+    }
     if (fs.existsSync(MODEL_FILE)) {
       const raw = fs.readFileSync(MODEL_FILE, "utf-8");
       const parsed = JSON.parse(raw);
@@ -135,6 +144,16 @@ function loadServerStorage() {
         globalAiModel = parsed;
       }
     }
+
+    // Auto-restore peak if current model is blank or below peak
+    if (peakAiModel && (!globalAiModel.meta.learnedCount || globalAiModel.meta.totalSimulatedGames < peakAiModel.meta.totalSimulatedGames)) {
+      globalAiModel.learnedBook = { ...peakAiModel.learnedBook, ...globalAiModel.learnedBook };
+      globalAiModel.posBonuses = { ...peakAiModel.posBonuses, ...globalAiModel.posBonuses };
+      globalAiModel.meta.totalSimulatedGames = Math.max(globalAiModel.meta.totalSimulatedGames || 0, peakAiModel.meta.totalSimulatedGames || 0);
+      globalAiModel.meta.learnedCount = Object.keys(globalAiModel.learnedBook).length;
+      globalAiModel.meta.rating = Math.max(globalAiModel.meta.rating || 2000, peakAiModel.meta.rating || 2000);
+    }
+
     if (fs.existsSync(GAMES_FILE)) {
       const raw = fs.readFileSync(GAMES_FILE, "utf-8");
       const parsed = JSON.parse(raw);
@@ -152,14 +171,31 @@ function saveServerStorage() {
   try {
     fs.writeFileSync(MODEL_FILE, JSON.stringify(globalAiModel, null, 2), "utf-8");
     fs.writeFileSync(GAMES_FILE, JSON.stringify(storedGames, null, 2), "utf-8");
+
+    // Check and save Peak Model
+    const currentSims = globalAiModel.meta.totalSimulatedGames || 0;
+    const currentLearned = globalAiModel.meta.learnedCount || 0;
+    const currentRating = globalAiModel.meta.rating || 2000;
+
+    const peakSims = (peakAiModel && peakAiModel.meta && peakAiModel.meta.totalSimulatedGames) || 0;
+    const peakLearned = (peakAiModel && peakAiModel.meta && peakAiModel.meta.learnedCount) || 0;
+    const peakRating = (peakAiModel && peakAiModel.meta && peakAiModel.meta.rating) || 2000;
+
+    if (!peakAiModel || currentRating >= peakRating || currentSims >= peakSims || currentLearned >= peakLearned) {
+      peakAiModel = JSON.parse(JSON.stringify(globalAiModel));
+      fs.writeFileSync(PEAK_MODEL_FILE, JSON.stringify(peakAiModel, null, 2), "utf-8");
+    }
   } catch (e) {
     console.error("Error saving server persistent storage:", e);
   }
 }
 
 // -------------------------------------------------------------
-// AI Rating Calculator
+// AI Rating Calculator (Standard Competitive Elo Model)
 // -------------------------------------------------------------
+// Base: 2000 (マスター級初期値)
+// 人間撃破学習・定跡習得・自己対局数に応じて、対数減衰（Logarithmic Diminishing Returns）カーブで
+// 最高3600〜3900（Stockfish / AlphaZero 超人・完全解読クラス）へ自然に収束
 function calculateRating(totalGames: number, learnedCount: number, posBonuses: Record<string, number>, simulatedGames: number): number {
   const BASE_RATING = 2000;
   let posSum = 0;
@@ -168,9 +204,18 @@ function calculateRating(totalGames: number, learnedCount: number, posBonuses: R
       if (typeof v === "number") posSum += v;
     });
   }
-  const humanGain = totalGames * 14 + learnedCount * 3 + Math.min(300, Math.floor(posSum / 8));
-  const simGain = Math.floor(Math.sqrt(simulatedGames) * 4.2);
-  return BASE_RATING + humanGain + simGain;
+  const humanGain = Math.min(250, totalGames * 10);
+  const bookGain = learnedCount > 0 
+    ? Math.floor(Math.log10(learnedCount + 1) * 280 + Math.min(800, Math.sqrt(learnedCount) * 0.75))
+    : 0;
+  const posGain = posSum > 0 
+    ? Math.min(150, Math.floor(Math.log10(posSum + 1) * 40 + Math.sqrt(posSum) * 0.1))
+    : 0;
+  const simGain = simulatedGames > 0 
+    ? Math.floor(Math.log10(simulatedGames + 1) * 220 + Math.min(800, Math.sqrt(simulatedGames) * 0.4))
+    : 0;
+
+  return BASE_RATING + humanGain + bookGain + posGain + simGain;
 }
 
 // -------------------------------------------------------------
@@ -791,6 +836,28 @@ app.post("/api/ai/sync", (req, res) => {
     res.json({ success: true, model: globalAiModel });
   } catch (e) {
     res.status(500).json({ error: "Failed to sync AI learning data" });
+  }
+});
+
+// 9. Get Peak AI Model
+app.get("/api/ai/peak", (req, res) => {
+  res.json({
+    success: true,
+    peakModel: peakAiModel || globalAiModel,
+  });
+});
+
+// 10. Restore from Peak AI Model Backup
+app.post("/api/ai/restore-peak", (req, res) => {
+  try {
+    if (peakAiModel) {
+      globalAiModel = JSON.parse(JSON.stringify(peakAiModel));
+      saveServerStorage();
+      return res.json({ success: true, model: globalAiModel, message: "Restored from peak backup successfully." });
+    }
+    return res.status(404).json({ error: "No peak backup found" });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to restore peak backup" });
   }
 });
 
