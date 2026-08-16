@@ -211,13 +211,13 @@ function calculateRating(totalGames: number, learnedCount: number, posBonuses: R
   }
   const humanGain = Math.min(250, totalGames * 10);
   const bookGain = learnedCount > 0 
-    ? Math.floor(Math.log10(learnedCount + 1) * 280 + Math.min(800, Math.sqrt(learnedCount) * 0.75))
+    ? Math.min(1080, Math.floor(Math.log10(learnedCount + 1) * 105 + Math.min(300, Math.sqrt(learnedCount) * 0.11)))
     : 0;
   const posGain = posSum > 0 
-    ? Math.min(150, Math.floor(Math.log10(posSum + 1) * 40 + Math.sqrt(posSum) * 0.1))
+    ? Math.min(150, Math.floor(Math.log10(posSum + 1) * 18 + Math.min(45, Math.sqrt(posSum) * 0.04)))
     : 0;
   const simGain = simulatedGames > 0 
-    ? Math.floor(Math.log10(simulatedGames + 1) * 220 + Math.min(800, Math.sqrt(simulatedGames) * 0.4))
+    ? Math.min(1020, Math.floor(Math.log10(simulatedGames + 1) * 85 + Math.min(200, Math.sqrt(simulatedGames) * 0.2)))
     : 0;
 
   return BASE_RATING + humanGain + bookGain + posGain + simGain;

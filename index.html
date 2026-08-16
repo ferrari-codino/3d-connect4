@@ -5182,7 +5182,7 @@
       const BASE_RATING = 2000;
       const games = getStoredWinningGames();
       const totalGames = games.length;
-      const learnedCount = aiLearningMetadata.learnedCount || Object.keys(learnedOpeningBook).length || 0;
+      const learnedCount = (aiLearningMetadata && aiLearningMetadata.learnedCount) || Object.keys(learnedOpeningBook).length || 0;
       const simGames = (aiLearningMetadata && aiLearningMetadata.totalSimulatedGames) || 0;
       let posBonusSum = 0;
       if (learnedPositionBonuses && typeof learnedPositionBonuses === 'object') {
@@ -5192,17 +5192,17 @@
       }
       // 人間撃破学習ボーナス (上限250pt)
       const humanGain = Math.min(250, totalGames * 10);
-      // 定跡獲得ボーナス: 100万手規模でも自然に伸びる対数＋平方根ハイブリッド式 (上限〜1080pt)
+      // 定跡獲得ボーナス: 100万〜1000万手規模でも自然に伸びる対数＋平方根ハイブリッド式 (100万局/783万手時: ~1024pt / 最大1080pt)
       const bookGain = learnedCount > 0 
-        ? Math.floor(Math.log10(learnedCount + 1) * 280 + Math.min(800, Math.sqrt(learnedCount) * 0.75))
+        ? Math.min(1080, Math.floor(Math.log10(learnedCount + 1) * 105 + Math.min(300, Math.sqrt(learnedCount) * 0.11)))
         : 0;
       // 要衝マス重みボーナス (上限150pt)
       const posGain = posBonusSum > 0 
-        ? Math.min(150, Math.floor(Math.log10(posBonusSum + 1) * 40 + Math.sqrt(posBonusSum) * 0.1))
+        ? Math.min(150, Math.floor(Math.log10(posBonusSum + 1) * 18 + Math.min(45, Math.sqrt(posBonusSum) * 0.04)))
         : 0;
-      // 自己対局局数ボーナス: 100万〜1000万局規模で美しくスケール (上限〜1020pt)
+      // 自己対局局数ボーナス: 100万〜1000万局規模で美しくスケール (100万局時: ~710pt / 最大1020pt)
       const simGain = simGames > 0 
-        ? Math.floor(Math.log10(simGames + 1) * 220 + Math.min(800, Math.sqrt(simGames) * 0.4))
+        ? Math.min(1020, Math.floor(Math.log10(simGames + 1) * 85 + Math.min(200, Math.sqrt(simGames) * 0.2)))
         : 0;
 
       const ratingGain = humanGain + bookGain + posGain + simGain;
@@ -5416,28 +5416,45 @@
       checkAndSavePeakBackup(false);
     }
 
-    function loadAiLearnedData() {
+    async function loadAiLearnedData() {
       try {
         const raw = localStorage.getItem(LEARNED_PATTERNS_KEY);
         if (raw) {
-          const data = JSON.parse(raw);
-          if (data && typeof data === 'object') {
-            if (data.learnedBook) learnedOpeningBook = data.learnedBook;
-            if (data.posBonuses) learnedPositionBonuses = data.posBonuses;
-            if (data.meta) aiLearningMetadata = data.meta;
-          }
+          try {
+            const data = JSON.parse(raw);
+            if (data && typeof data === 'object') {
+              if (data.learnedBook) learnedOpeningBook = data.learnedBook;
+              if (data.posBonuses) learnedPositionBonuses = data.posBonuses;
+              if (data.meta) aiLearningMetadata = data.meta;
+            }
+          } catch (e) {}
         }
 
-        // 自動安全復元チェック：もし現在データが0手・0局で、最高値バックアップが存在する場合は自動復旧
+        // 自動安全復元チェック：もし現在データが0手・0局（レート2000）で、最高値バックアップが存在する場合は自動復旧
         const curSims = (aiLearningMetadata && aiLearningMetadata.totalSimulatedGames) || 0;
-        const curLearned = Object.keys(learnedOpeningBook).length;
+        const curLearned = (aiLearningMetadata && aiLearningMetadata.learnedCount) || Object.keys(learnedOpeningBook).length;
         if (curSims === 0 && curLearned === 0) {
           const peakRaw = localStorage.getItem(PEAK_BACKUP_KEY);
           if (peakRaw) {
             try {
               const peakObj = JSON.parse(peakRaw);
-              if (peakObj && ((peakObj.meta && peakObj.meta.totalSimulatedGames > 0) || (peakObj.learnedBook && Object.keys(peakObj.learnedBook).length > 0))) {
+              if (peakObj && ((peakObj.meta && peakObj.meta.totalSimulatedGames > 0) || (peakObj.meta && peakObj.meta.learnedCount > 0) || (peakObj.learnedBook && Object.keys(peakObj.learnedBook).length > 0))) {
                 restoreAiFromPeakBackup(false);
+              }
+            } catch (e) {}
+          } else {
+            // サーバーの最高値バックアップからも自動取得試行
+            try {
+              const resp = await fetch('/api/ai/peak');
+              if (resp.ok) {
+                const resJson = await resp.json();
+                if (resJson.success && resJson.peakModel) {
+                  const sSims = (resJson.peakModel.meta && resJson.peakModel.meta.totalSimulatedGames) || 0;
+                  const sLearned = (resJson.peakModel.meta && resJson.peakModel.meta.learnedCount) || 0;
+                  if (sSims > 0 || sLearned > 0) {
+                    restoreAiFromPeakBackup(false);
+                  }
+                }
               }
             } catch (e) {}
           }
@@ -6180,33 +6197,30 @@
         const res = await fetch('/api/ai/model');
         if (!res.ok) return;
         const serverModel = await res.json();
-        if (serverModel && serverModel.learnedBook) {
-          learnedOpeningBook = { ...learnedOpeningBook, ...serverModel.learnedBook };
-          learnedPositionBonuses = { ...learnedPositionBonuses, ...serverModel.posBonuses };
+        if (serverModel && (serverModel.learnedBook || (serverModel.meta && serverModel.meta.totalSimulatedGames > 0))) {
+          if (serverModel.learnedBook) {
+            learnedOpeningBook = { ...learnedOpeningBook, ...serverModel.learnedBook };
+          }
+          if (serverModel.posBonuses) {
+            learnedPositionBonuses = { ...learnedPositionBonuses, ...serverModel.posBonuses };
+          }
           const localSims = Number((aiLearningMetadata && aiLearningMetadata.totalSimulatedGames) || 0);
           const serverSims = Number((serverModel.meta && serverModel.meta.totalSimulatedGames) || 0);
+          const localLearned = Number((aiLearningMetadata && aiLearningMetadata.learnedCount) || Object.keys(learnedOpeningBook).length || 0);
+          const serverLearned = Number((serverModel.meta && serverModel.meta.learnedCount) || 0);
+
           aiLearningMetadata = {
-            lastTrainedAt: serverModel.meta.lastTrainedAt || (aiLearningMetadata && aiLearningMetadata.lastTrainedAt) || new Date().toLocaleString('ja-JP'),
-            totalGamesTrained: Math.max(serverModel.meta.totalGamesTrained || 0, (aiLearningMetadata && aiLearningMetadata.totalGamesTrained) || 0),
+            lastTrainedAt: serverModel.meta?.lastTrainedAt || (aiLearningMetadata && aiLearningMetadata.lastTrainedAt) || new Date().toLocaleString('ja-JP'),
+            totalGamesTrained: Math.max(serverModel.meta?.totalGamesTrained || 0, (aiLearningMetadata && aiLearningMetadata.totalGamesTrained) || 0),
             totalSimulatedGames: Math.max(localSims, serverSims),
-            learnedCount: Object.keys(learnedOpeningBook).length
+            learnedCount: Math.max(localLearned, serverLearned, Object.keys(learnedOpeningBook).length)
           };
 
-          try {
-            localStorage.setItem(LEARNED_PATTERNS_KEY, JSON.stringify({
-              learnedBook: learnedOpeningBook,
-              posBonuses: learnedPositionBonuses,
-              meta: aiLearningMetadata
-            }));
-          } catch (e) {
-            try {
-              localStorage.setItem(LEARNED_PATTERNS_KEY, JSON.stringify({
-                learnedBook: {},
-                posBonuses: learnedPositionBonuses,
-                meta: aiLearningMetadata
-              }));
-            } catch (e2) {}
-          }
+          safeSaveToLocalStorage(LEARNED_PATTERNS_KEY, {
+            learnedBook: learnedOpeningBook,
+            posBonuses: learnedPositionBonuses,
+            meta: aiLearningMetadata
+          });
 
           updateQuietAiRatingDisplay();
           updateAdminModalUI();

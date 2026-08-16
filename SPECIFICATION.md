@@ -48,11 +48,11 @@ $$\text{AI Rating} = \text{Base}(2000) + \text{Gain}_{\text{human}} + \text{Gain
 2. **人間撃破学習ボーナス（最大 +250 pt）**:
    $$\text{Gain}_{\text{human}} = \min(250, \text{totalGames} \times 10)$$
 3. **定跡獲得ボーナス（最大 +1080 pt）**:
-   $$\text{Gain}_{\text{book}} = \lfloor \log_{10}(\text{learnedCount} + 1) \times 280 + \min(800, \sqrt{\text{learnedCount}} \times 0.75) \rfloor$$
+   $$\text{Gain}_{\text{book}} = \min(1080, \lfloor \log_{10}(\text{learnedCount} + 1) \times 105 + \min(300, \sqrt{\text{learnedCount}} \times 0.11) \rfloor)$$
 4. **要衝マス重みボーナス（最大 +150 pt）**:
-   $$\text{Gain}_{\text{pos}} = \min(150, \lfloor \log_{10}(\text{posBonusSum} + 1) \times 40 + \sqrt{\text{posBonusSum}} \times 0.1 \rfloor)$$
+   $$\text{Gain}_{\text{pos}} = \min(150, \lfloor \log_{10}(\text{posBonusSum} + 1) \times 18 + \min(45, \sqrt{\text{posBonusSum}} \times 0.04) \rfloor)$$
 5. **自己対局局数ボーナス（最大 +1020 pt）**:
-   $$\text{Gain}_{\text{sim}} = \lfloor \log_{10}(\text{simGames} + 1) \times 220 + \min(800, \sqrt{\text{simGames}} \times 0.4) \rfloor$$
+   $$\text{Gain}_{\text{sim}} = \min(1020, \lfloor \log_{10}(\text{simGames} + 1) \times 85 + \min(200, \sqrt{\text{simGames}} \times 0.2) \rfloor)$$
 
 ### 4.2 レーティング収束基準
 - **マスター級（初期値）**: 2000
