@@ -187,7 +187,7 @@ function trainServerAiModel(): AiModelData {
     const simBoard = new Array(64).fill(0);
     const simHeights = new Array(16).fill(0);
 
-    for (let step = 0; step < game.moves.length && step < 8; step++) {
+    for (let step = 0; step < game.moves.length && step < 24; step++) {
       const m = game.moves[step];
       const boardKey = simBoard.join("");
 
@@ -569,12 +569,12 @@ async function runServerSelfPlayBatch(targetGames: number) {
     else if (winner === 2) simStatus.p2Wins++;
     else simStatus.draws++;
 
-    // Reinforcement Learning: Extract winning patterns from victorious play up to 12 plies
+    // Reinforcement Learning: Extract winning patterns from victorious play up to 24 plies (初手〜第24手までの勝因定跡)
     if (winner !== null && winLine !== null && moves.length >= 4) {
       const simB = new Uint8Array(64);
       const simH = new Uint8Array(16);
 
-      for (let s = 0; s < moves.length && s < 12; s++) {
+      for (let s = 0; s < moves.length && s < 24; s++) {
         const m = moves[s];
         const key = simB.join("");
         if (m.player === winner && localBook[key] === undefined) {
@@ -755,6 +755,43 @@ app.post("/api/ai/reset", (req, res) => {
   storedGames = [];
   saveServerStorage();
   res.json({ success: true, model: globalAiModel });
+});
+
+// 8. Sync Client AI Learning Data (Preserve Plan A local training & bonuses permanently)
+app.post("/api/ai/sync", (req, res) => {
+  try {
+    const clientData = req.body;
+    if (clientData && typeof clientData === "object") {
+      if (clientData.learnedBook && typeof clientData.learnedBook === "object") {
+        globalAiModel.learnedBook = { ...globalAiModel.learnedBook, ...clientData.learnedBook };
+      }
+      if (clientData.posBonuses && typeof clientData.posBonuses === "object") {
+        Object.entries(clientData.posBonuses).forEach(([k, v]) => {
+          if (typeof v === "number") {
+            globalAiModel.posBonuses[k] = Math.max(globalAiModel.posBonuses[k] || 0, v);
+          }
+        });
+      }
+      if (clientData.meta && typeof clientData.meta === "object") {
+        const clientSims = Number(clientData.meta.totalSimulatedGames) || 0;
+        const currentSims = Number(globalAiModel.meta.totalSimulatedGames) || 0;
+        globalAiModel.meta.totalSimulatedGames = Math.max(currentSims, clientSims);
+        globalAiModel.meta.totalGamesTrained = Math.max(globalAiModel.meta.totalGamesTrained || 0, Number(clientData.meta.totalGamesTrained) || 0);
+        globalAiModel.meta.lastTrainedAt = clientData.meta.lastTrainedAt || globalAiModel.meta.lastTrainedAt;
+      }
+      globalAiModel.meta.learnedCount = Object.keys(globalAiModel.learnedBook).length;
+      globalAiModel.meta.rating = calculateRating(
+        globalAiModel.meta.totalGamesTrained,
+        globalAiModel.meta.learnedCount,
+        globalAiModel.posBonuses,
+        globalAiModel.meta.totalSimulatedGames
+      );
+      saveServerStorage();
+    }
+    res.json({ success: true, model: globalAiModel });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to sync AI learning data" });
+  }
 });
 
 // -------------------------------------------------------------

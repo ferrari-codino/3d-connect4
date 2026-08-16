@@ -2089,7 +2089,7 @@
       <button type="button" class="btn-heroes" id="btnShowHeroesHeader" onclick="openHeroesModal()" title="AIに勝利した勇者たちの一覧を見る">
         🏆 <span>AIに勝利した勇者たち</span>
       </button>
-      <button type="button" class="btn-admin-header" id="btnAdminPanelHeader" onclick="openAdminModal()" title="管理者専用AI学習・棋譜解析センター">
+      <button type="button" class="btn-admin-header" id="btnAdminPanelHeader" onclick="openAdminModal()" title="管理者専用AI学習・棋譜解析センター" style="display:none;">
         🧠 <span>管理者・AI学習</span>
       </button>
       <a id="docDownloadBtn" href="/developer_docs.txt" download="立体四目並べ3D_開発者ドキュメント.txt" class="doc-download-btn" title="開発者ドキュメント(.txt)をダウンロード">
@@ -2543,7 +2543,7 @@
           <span class="admin-kpi-val" id="adminKpiTotalGames">0局</span>
         </div>
         <div class="admin-kpi-card">
-          <span class="admin-kpi-label">AI学習済み定石・トラップ数</span>
+          <span class="admin-kpi-label">AI学習済み定跡・トラップ数</span>
           <span class="admin-kpi-val" id="adminKpiLearnedPatterns">0手</span>
         </div>
         <div class="admin-kpi-card">
@@ -2618,7 +2618,7 @@
             <input type="radio" name="localSimRandomPlies" value="6"> 序盤6手 (深層乱戦・絶対手保証)
           </label>
           <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
-            <input type="radio" name="localSimRandomPlies" value="0"> ランダムなし (固定定石)
+            <input type="radio" name="localSimRandomPlies" value="0"> ランダムなし (固定定跡)
           </label>
         </div>
 
@@ -2815,7 +2815,7 @@
 
     initWinningLines();
 
-    // Opening Book for 3D Connect Four Center Control & Space Diagonal Strategy
+    // 定跡 (Opening Book) for 3D Connect Four Center Control & Space Diagonal Strategy
     const OPENING_CENTER_COLS = [5, 6, 9, 10]; // Center 2x2 columns B2, B3, C2, C3
     // Corner to corresponding center diagonal mapping
     const CORNER_TO_CENTER_MAP = {
@@ -2841,7 +2841,7 @@
 
       if (placed >= 4) return -1; // Standard book only for first 4 moves
 
-      // Master opening book
+      // Master opening book (基本定跡)
       if (placed === 0) {
         // First move: Choose top strategic center column (B2 or C3)
         const topStarts = [5, 10, 6, 9];
@@ -4685,11 +4685,11 @@
         games.forEach(game => {
           if (!game.moves || !Array.isArray(game.moves)) return;
 
-          // 1. 序盤定石の学習 (初手〜第8手までの勝利者着手)
+          // 1. 定跡・勝因手順の学習 (初手〜第24手までの勝利者着手を完全定跡化)
           const simBoard = new Array(64).fill(0);
           const simHeights = new Array(16).fill(0);
 
-          for (let step = 0; step < game.moves.length && step < 8; step++) {
+          for (let step = 0; step < game.moves.length && step < 24; step++) {
             const m = game.moves[step];
             const boardKey = simBoard.slice(0, 64).join('');
 
@@ -4746,7 +4746,7 @@
         updateAdminModalUI();
 
         if (isManualTrigger) {
-          showFloatingToast(`🧠 AI学習が完了しました！ (${games.length}局の棋譜から ${learnedCount}手の定石・防御パターンを習得)`);
+          showFloatingToast(`🧠 AI学習が完了しました！ (${games.length}局の棋譜から ${learnedCount}手の定跡・防御パターンを習得)`);
           playSoundEffect('win');
         }
       } catch (e) {
@@ -4754,7 +4754,7 @@
       }
     }
 
-    // AIの最高実力レーティング・能力値の数値化計算
+    // AIの最高実力レーティング・能力値の数値化計算（自己対局数・定石数に応じて上限なく自然に成長）
     function calculateAiMaxRating() {
       const BASE_RATING = 2000;
       const games = getStoredWinningGames();
@@ -4767,11 +4767,21 @@
           if (typeof v === 'number') posBonusSum += v;
         });
       }
-      // 蓄積された撃破棋譜・学習済み定石・要衝マス重み・自己対局局数から総合実力値を算出
+      // 蓄積された撃破棋譜・学習済み定跡・要衝マス重み・自己対局局数から総合実力値を算出
       const humanGain = totalGames * 14;
-      const bookGain = Math.min(800, learnedCount * 0.8);
-      const posGain = Math.min(400, Math.floor(posBonusSum / 8));
-      const simGain = Math.min(800, Math.floor(Math.sqrt(simGames) * 3.5));
+      // 定跡獲得ボーナス: 100万手規模でもスムーズに伸びる対数＋平方根ハイブリッド式
+      const bookGain = learnedCount > 0 
+        ? Math.floor(Math.log10(learnedCount + 1) * 260 + Math.min(1200, Math.sqrt(learnedCount) * 0.8))
+        : 0;
+      // 要衝マス重みボーナス
+      const posGain = posBonusSum > 0 
+        ? Math.min(600, Math.floor(Math.log10(posBonusSum + 1) * 80 + Math.sqrt(posBonusSum) * 0.2))
+        : 0;
+      // 自己対局局数ボーナス: 100万〜1000万局規模まで自然に伸びる式
+      const simGain = simGames > 0 
+        ? Math.floor(Math.log10(simGames + 1) * 220 + Math.min(1000, Math.sqrt(simGames) * 0.6))
+        : 0;
+
       const ratingGain = humanGain + bookGain + posGain + simGain;
       return BASE_RATING + Math.round(ratingGain);
     }
@@ -4814,14 +4824,13 @@
       showFloatingToast('🔄 AI学習データを初期状態にリセットしました');
     }
 
-    // 管理者パネルの表示制御・URL判定（?admin=true または 開発者環境 / run.app）
+    // 管理者パネルの表示制御・URL判定（?admin=true または 開発者環境: ais-dev, localhost）
     function checkIsAdminUser() {
       const urlParams = new URLSearchParams(window.location.search);
-      const hasAdminParam = urlParams.has('admin') || urlParams.get('mode') === 'admin' || window.location.hash.includes('admin');
+      const hasAdminParam = urlParams.has('admin') || urlParams.get('mode') === 'admin' || window.location.hash.includes('admin') || urlParams.has('dev');
       const isDevHost = window.location.hostname === 'localhost' || 
                         window.location.hostname === '127.0.0.1' || 
                         window.location.port === '3000' || 
-                        window.location.hostname.includes('run.app') || 
                         window.location.hostname.includes('ais-dev');
       return hasAdminParam || isDevHost;
     }
@@ -4832,17 +4841,20 @@
         if (checkIsAdminUser()) {
           btn.style.display = 'inline-flex';
         } else {
-          // 一般公開URLでもボタンを表示、または非表示にするが常にクリック可能に
-          btn.style.display = 'inline-flex';
+          btn.style.display = 'none';
         }
       }
 
-      // レート表示やクレジットバッジをクリックしても管理者画面を開けるようにする
+      // レート表示やクレジットバッジ（開発者環境のみクリック可能）
       const creditBadge = document.querySelector('.header-credit-badge');
       if (creditBadge) {
-        creditBadge.style.cursor = 'pointer';
-        creditBadge.title = 'クリックでAI学習・管理者パネルを開く';
-        creditBadge.onclick = () => openAdminModal();
+        if (checkIsAdminUser()) {
+          creditBadge.style.cursor = 'pointer';
+          creditBadge.title = 'クリックでAI学習・管理者パネルを開く';
+          creditBadge.onclick = () => openAdminModal();
+        } else {
+          creditBadge.style.cursor = 'default';
+        }
       }
     }
 
@@ -5067,12 +5079,12 @@
         else if (winner === 2) p2Wins++;
         else draws++;
 
-        // Reinforcement Learning: Extract winning patterns up to 12 plies
+        // Reinforcement Learning: Extract winning patterns up to 24 plies (初手〜第24手までの勝因定跡)
         if (winner !== null && winLine !== null && moves.length >= 4) {
           const playbackB = new Uint8Array(64);
           const playbackH = new Uint8Array(16);
 
-          for (let s = 0; s < moves.length && s < 12; s++) {
+          for (let s = 0; s < moves.length && s < 24; s++) {
             const m = moves[s];
             const key = playbackB.join('');
             if (m.player === winner && learnedOpeningBook[key] === undefined) {
@@ -5109,7 +5121,7 @@
 
             if (progressFill) progressFill.style.width = `${pct}%`;
             if (statsText) {
-              statsText.innerHTML = `実行中: <b>${completed.toLocaleString()} / ${targetGames.toLocaleString()}局 (${pct}%)</b> · 速度: ${speed.toLocaleString()}局/秒 · 先手${p1Wins.toLocaleString()}勝(${p1Pct}%) / 後手${p2Wins.toLocaleString()}勝(${p2Pct}%) / 引分${draws.toLocaleString()} (新定石 +${newLearned.toLocaleString()}手)`;
+              statsText.innerHTML = `実行中: <b>${completed.toLocaleString()} / ${targetGames.toLocaleString()}局 (${pct}%)</b> · 速度: ${speed.toLocaleString()}局/秒 · 先手${p1Wins.toLocaleString()}勝(${p1Pct}%) / 後手${p2Wins.toLocaleString()}勝(${p2Pct}%) / 引分${draws.toLocaleString()} (新定跡 +${newLearned.toLocaleString()}手)`;
             }
             lastUIUpdate = now;
             await new Promise(resolve => setTimeout(resolve, 0));
@@ -5132,6 +5144,28 @@
           posBonuses: learnedPositionBonuses,
           meta: aiLearningMetadata
         }));
+      } catch (e) {
+        console.warn('localStorage quota handling:', e);
+        try {
+          localStorage.setItem(LEARNED_PATTERNS_KEY, JSON.stringify({
+            learnedBook: {},
+            posBonuses: learnedPositionBonuses,
+            meta: aiLearningMetadata
+          }));
+        } catch (e2) {}
+      }
+
+      // Sync to cloud server so that server permanently stores the simulated count and model
+      try {
+        fetch('/api/ai/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            learnedBook: learnedOpeningBook,
+            posBonuses: learnedPositionBonuses,
+            meta: aiLearningMetadata
+          })
+        }).catch(() => {});
       } catch (e) {}
 
       updateQuietAiRatingDisplay();
@@ -5141,8 +5175,21 @@
       if (btnStart) btnStart.style.display = 'inline-block';
       if (btnStop) btnStop.style.display = 'none';
 
+      const finalPct = targetGames > 0 ? Math.round((simulatedInThisRun / targetGames) * 100) : 100;
+      const finalP1Pct = simulatedInThisRun > 0 ? Math.round((p1Wins / simulatedInThisRun) * 100) : 0;
+      const finalP2Pct = simulatedInThisRun > 0 ? Math.round((p2Wins / simulatedInThisRun) * 100) : 0;
+
+      if (progressFill) progressFill.style.width = !localSimStopRequested ? '100%' : `${finalPct}%`;
+      if (statsText) {
+        if (!localSimStopRequested) {
+          statsText.innerHTML = `<span style="color:#10b981; font-weight:800;">✅ 学習完了:</span> <b>${targetGames.toLocaleString()}局 (100%)</b> · 先手${p1Wins.toLocaleString()}勝(${finalP1Pct}%) / 後手${p2Wins.toLocaleString()}勝(${finalP2Pct}%) / 引分${draws.toLocaleString()} · (新定跡 +${newLearned.toLocaleString()}手 習得済)`;
+        } else {
+          statsText.innerHTML = `<span style="color:#f59e0b; font-weight:800;">⏹️ 中断完了:</span> <b>${simulatedInThisRun.toLocaleString()}局完了 (${finalPct}%)</b> · 先手${p1Wins.toLocaleString()}勝 / 後手${p2Wins.toLocaleString()}勝 · (新定跡 +${newLearned.toLocaleString()}手)`;
+        }
+      }
+
       if (!localSimStopRequested) {
-        showFloatingToast(`⚡ ブラウザ内自己対局完了！ (${targetGames.toLocaleString()}局完了 · 定石+${newLearned}手習得)`);
+        showFloatingToast(`⚡ ブラウザ内自己対局完了！ (${targetGames.toLocaleString()}局完了 · 定跡+${newLearned}手習得)`);
         playSoundEffect('win');
       } else {
         showFloatingToast('⏹️ 自己対局シミュレーションを中断しました');
@@ -5327,9 +5374,12 @@
         if (serverModel && serverModel.learnedBook) {
           learnedOpeningBook = { ...learnedOpeningBook, ...serverModel.learnedBook };
           learnedPositionBonuses = { ...learnedPositionBonuses, ...serverModel.posBonuses };
+          const localSims = Number((aiLearningMetadata && aiLearningMetadata.totalSimulatedGames) || 0);
+          const serverSims = Number((serverModel.meta && serverModel.meta.totalSimulatedGames) || 0);
           aiLearningMetadata = {
-            lastTrainedAt: serverModel.meta.lastTrainedAt,
-            totalGamesTrained: serverModel.meta.totalGamesTrained || 0,
+            lastTrainedAt: serverModel.meta.lastTrainedAt || (aiLearningMetadata && aiLearningMetadata.lastTrainedAt) || new Date().toLocaleString('ja-JP'),
+            totalGamesTrained: Math.max(serverModel.meta.totalGamesTrained || 0, (aiLearningMetadata && aiLearningMetadata.totalGamesTrained) || 0),
+            totalSimulatedGames: Math.max(localSims, serverSims),
             learnedCount: Object.keys(learnedOpeningBook).length
           };
 
@@ -5339,7 +5389,15 @@
               posBonuses: learnedPositionBonuses,
               meta: aiLearningMetadata
             }));
-          } catch (e) {}
+          } catch (e) {
+            try {
+              localStorage.setItem(LEARNED_PATTERNS_KEY, JSON.stringify({
+                learnedBook: {},
+                posBonuses: learnedPositionBonuses,
+                meta: aiLearningMetadata
+              }));
+            } catch (e2) {}
+          }
 
           updateQuietAiRatingDisplay();
           updateAdminModalUI();
