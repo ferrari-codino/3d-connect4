@@ -134,6 +134,13 @@
       box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
     }
 
+    .status-badge.thinking {
+      background: rgba(0, 242, 255, 0.15);
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.45);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
+    }
+
     .status-dot {
       width: 8px;
       height: 8px;
@@ -4217,13 +4224,53 @@
       return { move: bestMove, score: bestScore };
     }
 
+    // 🧠 難易度別 AI思考間（ウェイト＆ランダム揺らぎ）計算エンジン
+    // お子様や初心者が0秒即着手で威圧感・焦りを感じないよう、人間味と安心感のある「間」を演出
+    function getAiThinkingDelay(diff) {
+      let baseMs = 600;
+      let jitterMs = 100;
+
+      if (diff === 'easy') {
+        // 初級: 900ms 〜 1200ms (平均 1050ms) お子様が盤面を落ち着いて確認できる温かいテンポ
+        baseMs = 1050;
+        jitterMs = 150;
+      } else if (diff === 'medium') {
+        // 中級: 500ms 〜 700ms (平均 600ms) 人間らしい思考リズムと心地よい対局感
+        baseMs = 600;
+        jitterMs = 100;
+      } else if (diff === 'hard') {
+        // 上級: 300ms 〜 420ms (平均 360ms) スマートで軽快な対戦テンポ
+        baseMs = 360;
+        jitterMs = 60;
+      } else if (diff === 'master') {
+        // マスター級(神級): 150ms 〜 250ms (平均 200ms) 超高速・超人的な計算スピード感
+        baseMs = 200;
+        jitterMs = 50;
+      } else if (diff === 'custom') {
+        // カスタム設定: 200ms 〜 320ms (平均 260ms)
+        baseMs = 260;
+        jitterMs = 60;
+      }
+
+      const randomDelta = (Math.random() * 2 - 1) * jitterMs;
+      const finalDelay = Math.round(baseMs + randomDelta);
+      return Math.max(120, finalDelay);
+    }
+
     // AI Move trigger
     function makeAiMove() {
       if (isGameOver || isAiThinking) return;
       isAiThinking = true;
       updateStatusDisplay();
 
+      const thinkingDelay = getAiThinkingDelay(difficulty);
+
       setTimeout(() => {
+        if (isGameOver) {
+          isAiThinking = false;
+          return;
+        }
+
         const validMoves = [];
         for (let c = 0; c < 16; c++) {
           if (heights[c] < 4) validMoves.push(c);
@@ -4311,7 +4358,7 @@
           }
           executeMove(chosenMove, moveScore);
         }
-      }, 80);
+      }, thinkingDelay);
     }
 
     // Tactical Analysis Engine for Assist Mode 2 (王手 / Wリーチ狙い / 3連リーチ狙い)
@@ -6999,6 +7046,7 @@
         }
       } else if (isAiThinking) {
         text.textContent = '🤖 AIが思考中...';
+        badge.classList.add('thinking');
       } else if (currentTurn === humanPlayer) {
         text.textContent = `👤 ${name}の手番です`;
       } else {
