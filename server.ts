@@ -573,6 +573,9 @@ async function runServerSelfPlayBatch(targetGames: number) {
   const board = new Uint8Array(64);
   const heights = new Uint8Array(16);
 
+  const simB = new Uint8Array(64);
+  const simH = new Uint8Array(16);
+
   for (let g = 0; g < targetGames; g++) {
     if (simCancelRequested) break;
 
@@ -619,17 +622,19 @@ async function runServerSelfPlayBatch(targetGames: number) {
     else if (winner === 2) simStatus.p2Wins++;
     else simStatus.draws++;
 
-    // Reinforcement Learning: Extract winning patterns from victorious play up to 24 plies (初手〜第24手までの勝因定跡)
+    // Reinforcement Learning: Extract winning patterns from victorious play up to 16 plies
     if (winner !== null && winLine !== null && moves.length >= 4) {
-      const simB = new Uint8Array(64);
-      const simH = new Uint8Array(16);
+      simB.fill(0);
+      simH.fill(0);
 
-      for (let s = 0; s < moves.length && s < 24; s++) {
+      for (let s = 0; s < moves.length && s < 16; s++) {
         const m = moves[s];
         const key = simB.join("");
         if (m.player === winner && localBook[key] === undefined) {
-          localBook[key] = m.col;
-          newLearned++;
+          if (Object.keys(localBook).length < 200000) {
+            localBook[key] = m.col;
+            newLearned++;
+          }
         }
         const z = simH[m.col];
         if (z < 4) {
@@ -759,7 +764,7 @@ app.get("/api/games/list", (req, res) => {
 // 4. Trigger Server-Side Self-Play Simulation (Plan B)
 app.post("/api/simulation/start", async (req, res) => {
   const count = parseInt(req.body.count || "1000", 10);
-  const clampedCount = Math.max(100, Math.min(100000, isNaN(count) ? 1000 : count));
+  const clampedCount = Math.max(100, Math.min(1000000, isNaN(count) ? 1000 : count));
 
   if (simStatus.isRunning) {
     return res.status(409).json({ error: "Simulation is already running", status: simStatus });

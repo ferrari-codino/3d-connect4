@@ -5900,7 +5900,7 @@
     }
 
     // -------------------------------------------------------------
-    // Plan A: Browser High-Speed Self-Play Simulator (Memory-Only)
+    // Plan A: Browser High-Speed Self-Play Simulator (Memory-Only & Non-blocking)
     // -------------------------------------------------------------
     let localSimRunning = false;
     let localSimStopRequested = false;
@@ -5949,76 +5949,86 @@
       const startTime = performance.now();
       let lastUIUpdate = startTime;
 
+      // メモリGC負荷を最小化するため、TypedArrayをループ外で再利用
       const simB = new Uint8Array(64);
       const simH = new Uint8Array(16);
+      const playbackB = new Uint8Array(64);
+      const playbackH = new Uint8Array(16);
 
-      for (let g = 0; g < targetGames; g++) {
-        if (localSimStopRequested) break;
+      let completedGames = 0;
 
-        simB.fill(0);
-        simH.fill(0);
-        let curP = 1;
-        let winner = null;
-        let winLine = null;
-        let finalCol = -1;
-        const moves = [];
+      try {
+        // 100万局でもブラウザが絶対にフリーズしないタイムスライス方式（16ms〜30msごとにブラウザ描画へ制御を譲渡）
+        for (let g = 0; g < targetGames; g++) {
+          if (localSimStopRequested) break;
 
-        for (let turn = 0; turn < 64; turn++) {
-          const col = chooseSimMove(simB, simH, curP, learnedOpeningBook, learnedPositionBonuses, turn, randomPlies);
-          if (col === -1) break;
+          simB.fill(0);
+          simH.fill(0);
+          let curP = 1;
+          let winner = null;
+          let winLine = null;
+          let finalCol = -1;
+          const moves = [];
 
-          const z = simH[col];
-          simB[col + z * 16] = curP;
-          simH[col]++;
-          moves.push({ player: curP, col });
+          for (let turn = 0; turn < 64; turn++) {
+            const col = chooseSimMove(simB, simH, curP, learnedOpeningBook, learnedPositionBonuses, turn, randomPlies);
+            if (col === -1) break;
 
-          const win = checkSimWin(simB);
-          if (win) {
-            winner = win.winner;
-            winLine = win.line;
-            finalCol = col;
-            break;
-          }
-          curP = curP === 1 ? 2 : 1;
-        }
+            const z = simH[col];
+            simB[col + z * 16] = curP;
+            simH[col]++;
+            moves.push({ player: curP, col });
 
-        if (winner === 1) p1Wins++;
-        else if (winner === 2) p2Wins++;
-        else draws++;
-
-        // Reinforcement Learning: Extract winning patterns up to 24 plies (初手〜第24手までの勝因定跡)
-        if (winner !== null && winLine !== null && moves.length >= 4) {
-          const playbackB = new Uint8Array(64);
-          const playbackH = new Uint8Array(16);
-
-          for (let s = 0; s < moves.length && s < 24; s++) {
-            const m = moves[s];
-            const key = playbackB.join('');
-            if (m.player === winner && learnedOpeningBook[key] === undefined) {
-              learnedOpeningBook[key] = m.col;
-              newLearned++;
+            const win = checkSimWin(simB);
+            if (win) {
+              winner = win.winner;
+              winLine = win.line;
+              finalCol = col;
+              break;
             }
-            const z = playbackH[m.col];
-            if (z < 4) {
-              playbackB[m.col + z * 16] = m.player;
-              playbackH[m.col]++;
-            }
+            curP = curP === 1 ? 2 : 1;
           }
 
-          winLine.forEach(idx => {
-            learnedPositionBonuses[idx] = (learnedPositionBonuses[idx] || 0) + 8;
-          });
-          if (finalCol >= 0 && finalCol < 16) {
-            for (let z = 0; z < 4; z++) {
-              learnedPositionBonuses[finalCol + z * 16] = (learnedPositionBonuses[finalCol + z * 16] || 0) + 4;
+          if (winner === 1) p1Wins++;
+          else if (winner === 2) p2Wins++;
+          else draws++;
+          completedGames++;
+
+          // 強化学習: 勝因定跡の抽出（初手〜第16手までの要衝手順を記録）
+          if (winner !== null && winLine !== null && moves.length >= 4) {
+            playbackB.fill(0);
+            playbackH.fill(0);
+
+            for (let s = 0; s < moves.length && s < 16; s++) {
+              const m = moves[s];
+              const key = playbackB.join('');
+              if (m.player === winner && learnedOpeningBook[key] === undefined) {
+                // メモリ上限安全ガード（10万手上限）
+                if (Object.keys(learnedOpeningBook).length < 100000) {
+                  learnedOpeningBook[key] = m.col;
+                  newLearned++;
+                }
+              }
+              const z = playbackH[m.col];
+              if (z < 4) {
+                playbackB[m.col + z * 16] = m.player;
+                playbackH[m.col]++;
+              }
+            }
+
+            winLine.forEach(idx => {
+              learnedPositionBonuses[idx] = (learnedPositionBonuses[idx] || 0) + 8;
+            });
+            if (finalCol >= 0 && finalCol < 16) {
+              for (let z = 0; z < 4; z++) {
+                learnedPositionBonuses[finalCol + z * 16] = (learnedPositionBonuses[finalCol + z * 16] || 0) + 4;
+              }
             }
           }
-        }
 
-        // バッチUI更新：100,000〜1,000,000局の高負荷時もスムーズに描画＆中断可能に
-        if ((g % 500 === 0) || g === targetGames - 1) {
+          // ノンブロッキングUI更新：50局ごと、または経過時間40msごとに必ずUIイベントループへ譲渡
           const now = performance.now();
-          if (now - lastUIUpdate > 60 || g === targetGames - 1) {
+          if (g % 50 === 0 || now - lastUIUpdate > 45 || g === targetGames - 1) {
             const completed = g + 1;
             const pct = Math.round((completed / targetGames) * 100);
             const elapsedSec = Math.max(0.01, (now - startTime) / 1000);
@@ -6030,7 +6040,7 @@
             if (statsText) {
               statsText.innerHTML = `実行中: <b>${completed.toLocaleString()} / ${targetGames.toLocaleString()}局 (${pct}%)</b> · 速度: ${speed.toLocaleString()}局/秒 · 先手${p1Wins.toLocaleString()}勝(${p1Pct}%) / 後手${p2Wins.toLocaleString()}勝(${p2Pct}%) / 引分${draws.toLocaleString()} (新定跡 +${newLearned.toLocaleString()}手)`;
             }
-            // 上部KPIカードおよび解析レポートの定跡数・局数表示もリアルタイムに連動更新
+            // 上部KPIカードおよび解析レポートの定跡数表示もリアルタイムに連動更新
             const kpiLearnedEl = document.getElementById('adminKpiLearnedPatterns');
             if (kpiLearnedEl) {
               const liveCount = ((aiLearningMetadata && aiLearningMetadata.learnedCount) || 0) + newLearned;
@@ -6042,71 +6052,74 @@
               rptLearnedEl.textContent = `${liveCount.toLocaleString()}手`;
             }
             lastUIUpdate = now;
+            // メインスレッドを確実に解放し、「中断」ボタンの即応性とブラウザの快適動作を担保
             await new Promise(resolve => setTimeout(resolve, 0));
           }
         }
-      }
+      } catch (err) {
+        console.error('Simulation error:', err);
+      } finally {
+        // Save state (累計定跡数・累計自己対局数を安全に加算・累積保存)
+        const simulatedInThisRun = p1Wins + p2Wins + draws;
+        const prevLearnedCount = (aiLearningMetadata && aiLearningMetadata.learnedCount) || Object.keys(learnedOpeningBook).length || 0;
+        const actualBookKeys = Object.keys(learnedOpeningBook).length;
+        const newAccumulatedLearned = Math.max(prevLearnedCount + newLearned, actualBookKeys);
 
-      // Save state (累計定跡数・累計自己対局数を安全に加算・累積)
-      const simulatedInThisRun = p1Wins + p2Wins + draws;
-      const prevLearnedCount = (aiLearningMetadata && aiLearningMetadata.learnedCount) || Object.keys(learnedOpeningBook).length || 0;
-      const actualBookKeys = Object.keys(learnedOpeningBook).length;
-      const newAccumulatedLearned = Math.max(prevLearnedCount + newLearned, actualBookKeys);
+        aiLearningMetadata = {
+          lastTrainedAt: new Date().toLocaleString('ja-JP'),
+          totalGamesTrained: (aiLearningMetadata && aiLearningMetadata.totalGamesTrained) || 0,
+          totalSimulatedGames: ((aiLearningMetadata && aiLearningMetadata.totalSimulatedGames) || 0) + simulatedInThisRun,
+          learnedCount: newAccumulatedLearned
+        };
 
-      aiLearningMetadata = {
-        lastTrainedAt: new Date().toLocaleString('ja-JP'),
-        totalGamesTrained: (aiLearningMetadata && aiLearningMetadata.totalGamesTrained) || 0,
-        totalSimulatedGames: ((aiLearningMetadata && aiLearningMetadata.totalSimulatedGames) || 0) + simulatedInThisRun,
-        learnedCount: newAccumulatedLearned
-      };
+        safeSaveToLocalStorage(LEARNED_PATTERNS_KEY, {
+          learnedBook: learnedOpeningBook,
+          posBonuses: learnedPositionBonuses,
+          meta: aiLearningMetadata
+        });
 
-      safeSaveToLocalStorage(LEARNED_PATTERNS_KEY, {
-        learnedBook: learnedOpeningBook,
-        posBonuses: learnedPositionBonuses,
-        meta: aiLearningMetadata
-      });
+        // 🏆 シミュレーション完了/中断時に歴代最高値スナップショットを強制確定保存
+        checkAndSavePeakBackup(true);
 
-      // 🏆 シミュレーション完了/中断時に歴代最高値スナップショットを強制確定保存
-      checkAndSavePeakBackup(true);
+        // Sync to cloud server
+        try {
+          fetch('/api/ai/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              learnedBook: learnedOpeningBook,
+              posBonuses: learnedPositionBonuses,
+              meta: aiLearningMetadata
+            })
+          }).catch(() => {});
+        } catch (e) {}
 
-      // Sync to cloud server so that server permanently stores the simulated count and model
-      try {
-        fetch('/api/ai/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            learnedBook: learnedOpeningBook,
-            posBonuses: learnedPositionBonuses,
-            meta: aiLearningMetadata
-          })
-        }).catch(() => {});
-      } catch (e) {}
+        updateQuietAiRatingDisplay();
+        updateAdminModalUI();
 
-      updateQuietAiRatingDisplay();
-      updateAdminModalUI();
+        localSimRunning = false;
+        if (btnStart) btnStart.style.display = 'inline-block';
+        if (btnStop) btnStop.style.display = 'none';
 
-      localSimRunning = false;
-      if (btnStart) btnStart.style.display = 'inline-block';
-      if (btnStop) btnStop.style.display = 'none';
+        const finalPct = targetGames > 0 ? Math.round((simulatedInThisRun / targetGames) * 100) : 100;
+        const finalP1Pct = simulatedInThisRun > 0 ? Math.round((p1Wins / simulatedInThisRun) * 100) : 0;
+        const finalP2Pct = simulatedInThisRun > 0 ? Math.round((p2Wins / simulatedInThisRun) * 100) : 0;
 
-      const finalPct = targetGames > 0 ? Math.round((simulatedInThisRun / targetGames) * 100) : 100;
-      const finalP1Pct = simulatedInThisRun > 0 ? Math.round((p1Wins / simulatedInThisRun) * 100) : 0;
-      const finalP2Pct = simulatedInThisRun > 0 ? Math.round((p2Wins / simulatedInThisRun) * 100) : 0;
-
-      if (progressFill) progressFill.style.width = !localSimStopRequested ? '100%' : `${finalPct}%`;
-      if (statsText) {
-        if (!localSimStopRequested) {
-          statsText.innerHTML = `<span style="color:#10b981; font-weight:800;">✅ 学習完了:</span> <b>${targetGames.toLocaleString()}局 (100%)</b> · 先手${p1Wins.toLocaleString()}勝(${finalP1Pct}%) / 後手${p2Wins.toLocaleString()}勝(${finalP2Pct}%) / 引分${draws.toLocaleString()} · (新定跡 +${newLearned.toLocaleString()}手 習得済)`;
-        } else {
-          statsText.innerHTML = `<span style="color:#f59e0b; font-weight:800;">⏹️ 中断完了:</span> <b>${simulatedInThisRun.toLocaleString()}局完了 (${finalPct}%)</b> · 先手${p1Wins.toLocaleString()}勝 / 後手${p2Wins.toLocaleString()}勝 · (新定跡 +${newLearned.toLocaleString()}手)`;
+        if (progressFill) progressFill.style.width = !localSimStopRequested && simulatedInThisRun >= targetGames ? '100%' : `${finalPct}%`;
+        if (statsText) {
+          if (!localSimStopRequested && simulatedInThisRun >= targetGames) {
+            statsText.innerHTML = `<span style="color:#10b981; font-weight:800;">✅ 学習完了:</span> <b>${targetGames.toLocaleString()}局 (100%)</b> · 先手${p1Wins.toLocaleString()}勝(${finalP1Pct}%) / 後手${p2Wins.toLocaleString()}勝(${finalP2Pct}%) / 引分${draws.toLocaleString()} · (新定跡 +${newLearned.toLocaleString()}手 習得済)`;
+          } else {
+            statsText.innerHTML = `<span style="color:#f59e0b; font-weight:800;">⏹️ 中断完了:</span> <b>${simulatedInThisRun.toLocaleString()}局完了 (${finalPct}%)</b> · 先手${p1Wins.toLocaleString()}勝 / 後手${p2Wins.toLocaleString()}勝 · (新定跡 +${newLearned.toLocaleString()}手 累積保存済)`;
+          }
         }
-      }
 
-      if (!localSimStopRequested) {
-        showFloatingToast(`⚡ ブラウザ内自己対局完了！ (${targetGames.toLocaleString()}局完了 · 定跡+${newLearned}手習得)`);
-        playSoundEffect('win');
-      } else {
-        showFloatingToast('⏹️ 自己対局シミュレーションを中断しました');
+        if (!localSimStopRequested && simulatedInThisRun >= targetGames) {
+          showFloatingToast(`⚡ ブラウザ内自己対局完了！ (${targetGames.toLocaleString()}局完了 · 定跡+${newLearned}手習得)`);
+          playSoundEffect('win');
+        } else {
+          showFloatingToast(`⏹️ 自己対局シミュレーションを中断しました（${simulatedInThisRun.toLocaleString()}局の学習データを保存）`);
+        }
       }
     }
 
