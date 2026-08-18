@@ -1315,11 +1315,11 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     }
 
-    /* High-Sense Header Access Counter */
-    .header-access-counter {
+    /* High-Sense Header Match Counter (Plan B: Global + Personal) */
+    .header-match-counter {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.75) 100%);
       border: 1px solid rgba(56, 189, 248, 0.35);
       box-shadow: 0 0 12px rgba(56, 189, 248, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.08);
@@ -1335,7 +1335,7 @@
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     }
-    .header-access-counter:hover {
+    .header-match-counter:hover {
       border-color: rgba(56, 189, 248, 0.6);
       box-shadow: 0 0 16px rgba(56, 189, 248, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.15);
       transform: translateY(-1px);
@@ -1354,7 +1354,7 @@
     }
     .counter-label {
       font-size: 9.5px;
-      letter-spacing: 0.8px;
+      letter-spacing: 0.5px;
       color: #38bdf8;
       font-weight: 800;
       text-transform: uppercase;
@@ -1366,7 +1366,7 @@
       font-weight: 800;
       font-size: 12px;
       letter-spacing: 0.5px;
-      min-width: 32px;
+      min-width: 18px;
       display: inline-block;
       text-align: right;
     }
@@ -1375,6 +1375,17 @@
       color: #94a3b8;
       font-weight: 600;
       margin-left: -1px;
+    }
+    .counter-personal-badge {
+      font-size: 9.5px;
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.16);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      padding: 1px 6px;
+      border-radius: 10px;
+      margin-left: 2px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
     }
 
     .btn-sound {
@@ -2263,11 +2274,12 @@
         2026.08.14_1.00版、Presented by Portofino
         <span id="aiMaxRatingDisplay" class="quiet-ai-level" title="AI最高能力値 (学習進度レーティング)">4350</span>
       </div>
-      <div class="header-access-counter" id="headerAccessCounter" title="全プレイヤーの総合アクセス数（リアルタイム集計）" onclick="refreshAccessCounter()">
+      <div class="header-match-counter" id="headerMatchCounter" title="全プレイヤーの累計対局数 ＆ あなたの対局数（クリックで最新同期）" onclick="refreshMatchCounter()">
         <div class="counter-pulse-dot"></div>
-        <span class="counter-label">ACCESS</span>
-        <span class="counter-number" id="accessCountValue">29</span>
-        <span class="counter-unit">回</span>
+        <span class="counter-label">対局数</span>
+        <span class="counter-number" id="matchCountValue">30</span>
+        <span class="counter-unit">局</span>
+        <span class="counter-personal-badge" id="personalMatchBadge">あなた: 0局</span>
       </div>
       <button type="button" class="btn-sound" id="btnSoundToggle" onclick="toggleSound()" title="効果音のON/OFF切り替え">
         <span id="soundIcon">🔊</span> <span id="soundLabel">効果音 ON</span>
@@ -5270,7 +5282,9 @@
         : 0;
 
       const ratingGain = humanGain + bookGain + posGain + simGain;
-      return BASE_RATING + Math.round(ratingGain);
+      const computed = BASE_RATING + Math.round(ratingGain);
+      const metaRating = (aiLearningMetadata && typeof aiLearningMetadata.rating === 'number') ? aiLearningMetadata.rating : 4350;
+      return Math.max(computed, metaRating, 4350);
     }
 
     // 🛡️ localStorage 安全保存ユーティリティ（大容量定跡によるQuotaExceededErrorを100%防止）
@@ -6787,6 +6801,9 @@
         startParticleFx('lose');
       }
 
+      // ⚔️ ユーザ対局数カウントアップ（全体＋個人）
+      incrementMatchCount(resultType);
+
       modal.classList.add('active');
     }
 
@@ -8068,99 +8085,155 @@
     }
 
     // ==========================================
-    // High-Sense Global Access Counter Engine
+    // High-Sense Match Counter Engine (Plan B: Global + Personal)
     // ==========================================
     const COUNTER_NAMESPACE = 'portofino_connect4_3d_master_v2';
-    const COUNTER_KEY = 'global_visitors_v2';
-    const LOCAL_COUNTER_KEY = '3d_c4_local_access_cache_v2';
-    const BASE_ACCESS_COUNT = 29; // 29回からスタート
-    let currentDisplayedCount = 0;
+    const MATCH_COUNTER_KEY = 'global_matches_v1';
+    const LOCAL_GLOBAL_MATCHES_KEY = '3d_c4_global_matches_cache_v2';
+    const PERSONAL_MATCHES_KEY = '3d_c4_personal_matches_v1';
+    const BASE_GLOBAL_MATCHES = 30; // 30局からスタート（初期希望値・テスト対局数統合）
+    let currentDisplayedGlobalMatches = 0;
+    let currentDisplayedPersonalMatches = -1;
 
-    function animateCounterNumber(targetValue) {
-      const el = document.getElementById('accessCountValue');
-      if (!el) return;
+    function animateMatchCounterNumber(targetGlobal, targetPersonal) {
+      const numEl = document.getElementById('matchCountValue');
+      const badgeEl = document.getElementById('personalMatchBadge');
+      const wrapperEl = document.getElementById('headerMatchCounter');
 
-      const duration = 1000; // ms
+      if (badgeEl && targetPersonal !== undefined) {
+        badgeEl.textContent = `あなた: ${targetPersonal.toLocaleString('ja-JP')}局`;
+        currentDisplayedPersonalMatches = targetPersonal;
+      }
+
+      if (wrapperEl) {
+        wrapperEl.title = `全プレイヤーの累計対局数: ${targetGlobal.toLocaleString('ja-JP')}局 (あなたの対局数: ${targetPersonal.toLocaleString('ja-JP')}局) 【クリックで最新同期】`;
+      }
+
+      if (!numEl) return;
+
+      const duration = 900; // ms
       const startTime = performance.now();
-      const startValue = currentDisplayedCount > 0 ? currentDisplayedCount : Math.max(0, targetValue - 10);
+      const startValue = currentDisplayedGlobalMatches > 0 ? currentDisplayedGlobalMatches : Math.max(0, targetGlobal - 10);
 
       function updateNumber(now) {
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / duration, 1);
         // easeOutQuart
         const ease = 1 - Math.pow(1 - progress, 4);
-        const current = Math.round(startValue + (targetValue - startValue) * ease);
-        el.textContent = current.toLocaleString('ja-JP');
+        const current = Math.round(startValue + (targetGlobal - startValue) * ease);
+        numEl.textContent = current.toLocaleString('ja-JP');
 
         if (progress < 1) {
           requestAnimationFrame(updateNumber);
         } else {
-          el.textContent = targetValue.toLocaleString('ja-JP');
-          currentDisplayedCount = targetValue;
+          numEl.textContent = targetGlobal.toLocaleString('ja-JP');
+          currentDisplayedGlobalMatches = targetGlobal;
         }
       }
       requestAnimationFrame(updateNumber);
     }
 
-    async function initAccessCounter() {
-      const counterEl = document.getElementById('accessCountValue');
-      if (!counterEl) return;
-
-      // 1. Get cached local baseline
-      let localCount = parseInt(localStorage.getItem(LOCAL_COUNTER_KEY) || '0', 10);
-      if (!localCount || isNaN(localCount) || localCount < BASE_ACCESS_COUNT) {
-        localCount = BASE_ACCESS_COUNT;
+    function getPersonalMatchesCount() {
+      try {
+        const val = parseInt(localStorage.getItem(PERSONAL_MATCHES_KEY) || '0', 10);
+        return isNaN(val) || val < 0 ? 0 : val;
+      } catch (e) {
+        return 0;
       }
+    }
 
-      // Check session increment
-      const sessionKey = '3d_c4_session_counted_v2';
-      const hasCountedSession = sessionStorage.getItem(sessionKey);
-      if (!hasCountedSession) {
-        localCount += 1;
-        sessionStorage.setItem(sessionKey, 'true');
-        localStorage.setItem(LOCAL_COUNTER_KEY, localCount.toString());
+    function getGlobalMatchesCount() {
+      try {
+        const personal = getPersonalMatchesCount();
+        const cached = parseInt(localStorage.getItem(LOCAL_GLOBAL_MATCHES_KEY) || '0', 10);
+        if (!cached || isNaN(cached) || cached < BASE_GLOBAL_MATCHES) {
+          return BASE_GLOBAL_MATCHES + personal;
+        }
+        return cached;
+      } catch (e) {
+        return BASE_GLOBAL_MATCHES;
       }
+    }
 
-      // Initial immediate render
-      animateCounterNumber(localCount);
+    async function initMatchCounter() {
+      const personalCount = getPersonalMatchesCount();
+      let globalCount = getGlobalMatchesCount();
 
-      // 2. Fetch from real-time global counter API asynchronously
+      // 1. 即座に現在のキャッシュ値を表示
+      animateMatchCounterNumber(globalCount, personalCount);
+
+      // 2. 外部グローバルカウンタAPIから最新値を取得（ページ読み込み時はカウントアップせず値のみ照会）
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-        const apiUrl = `https://api.counterapi.dev/v1/${COUNTER_NAMESPACE}/${COUNTER_KEY}/up`;
+        const apiUrl = `https://api.counterapi.dev/v1/${COUNTER_NAMESPACE}/${MATCH_COUNTER_KEY}/`;
         const res = await fetch(apiUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
 
         if (res.ok) {
           const data = await res.json();
           if (data && typeof data.count === 'number') {
-            const finalCount = BASE_ACCESS_COUNT + data.count;
-            localStorage.setItem(LOCAL_COUNTER_KEY, finalCount.toString());
-            if (finalCount !== localCount) {
-              animateCounterNumber(finalCount);
+            const trueGlobal = BASE_GLOBAL_MATCHES + data.count;
+            if (trueGlobal >= globalCount) {
+              globalCount = trueGlobal;
+              localStorage.setItem(LOCAL_GLOBAL_MATCHES_KEY, globalCount.toString());
+              animateMatchCounterNumber(globalCount, personalCount);
             }
-            recordAccessStatistics(finalCount, !hasCountedSession);
-            return;
           }
         }
       } catch (e) {
-        // Fallback gracefully without error
-        console.debug('Access counter synced locally:', localCount);
+        // オフライン・ネットワーク待機時もキャッシュ値でシームレス稼働
+        console.debug('Match counter synced from local storage:', globalCount);
       }
+    }
 
-      // Record local statistics on fallback as well
-      recordAccessStatistics(localCount, !hasCountedSession);
+    // 対局終了時（勝敗・引き分け）に呼び出され、全体＋個人対局数を加算
+    function incrementMatchCount(resultType) {
+      try {
+        // 1. 個人対局数のインクリメント
+        const newPersonal = getPersonalMatchesCount() + 1;
+        localStorage.setItem(PERSONAL_MATCHES_KEY, newPersonal.toString());
+
+        // 2. 全体対局数キャッシュのインクリメント
+        let newGlobal = Math.max(getGlobalMatchesCount() + 1, BASE_GLOBAL_MATCHES + newPersonal);
+        localStorage.setItem(LOCAL_GLOBAL_MATCHES_KEY, newGlobal.toString());
+
+        // 3. UIアニメーション更新
+        animateMatchCounterNumber(newGlobal, newPersonal);
+
+        // 4. グローバルAPIへカウントアップ送信 (/up)
+        try {
+          const apiUrl = `https://api.counterapi.dev/v1/${COUNTER_NAMESPACE}/${MATCH_COUNTER_KEY}/up`;
+          fetch(apiUrl)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              if (data && typeof data.count === 'number') {
+                const apiGlobal = BASE_GLOBAL_MATCHES + data.count;
+                if (apiGlobal >= newGlobal) {
+                  newGlobal = apiGlobal;
+                  localStorage.setItem(LOCAL_GLOBAL_MATCHES_KEY, newGlobal.toString());
+                  animateMatchCounterNumber(newGlobal, newPersonal);
+                }
+              }
+            })
+            .catch(() => {});
+        } catch (err) {}
+
+        // 5. 対局詳細統計ログを端末内に蓄積
+        recordMatchStatistics(resultType, history.length, difficulty, newPersonal, newGlobal);
+      } catch (e) {
+        console.warn('Match counter increment error:', e);
+      }
     }
 
     // ==========================================
     // Analytics & Statistical Logger Engine
     // ==========================================
-    const STATS_LOGS_KEY = '3d_c4_access_analytics_logs_v1';
-    const STATS_DAILY_KEY = '3d_c4_access_daily_summary_v1';
+    const STATS_LOGS_KEY = '3d_c4_match_analytics_logs_v1';
+    const STATS_DAILY_KEY = '3d_c4_match_daily_summary_v1';
 
-    function recordAccessStatistics(currentCount, isNewSession) {
+    function recordMatchStatistics(resultType, totalMoves, matchDiff, personalMatchNum, currentGlobalMatches) {
       try {
         const now = new Date();
         const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
@@ -8172,7 +8245,7 @@
         const deviceType = window.innerWidth <= 600 ? 'Mobile' : (window.innerWidth <= 1024 ? 'Tablet' : 'Desktop');
 
         const logEntry = {
-          id: 'acc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          id: 'mat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
           timestamp: now.toISOString(),
           date: dateStr,
           time: timeStr,
@@ -8180,12 +8253,14 @@
           dayOfWeek: dayOfWeek,
           device: deviceType,
           screenSize: `${window.innerWidth}x${window.innerHeight}`,
-          lang: navigator.language || 'ja-JP',
-          countAtAccess: currentCount,
-          isNewSession: !!isNewSession
+          result: resultType,
+          totalMoves: totalMoves,
+          difficulty: matchDiff,
+          personalMatchNumber: personalMatchNum,
+          globalMatchCount: currentGlobalMatches
         };
 
-        // 1. Append to full historical logs (kept safely in localStorage)
+        // 1. 過去対局ログの追記保存 (最大2,000件保持)
         let logs = [];
         try {
           const rawLogs = localStorage.getItem(STATS_LOGS_KEY);
@@ -8195,11 +8270,10 @@
           logs = [];
         }
         logs.unshift(logEntry);
-        // Keep up to 2,000 raw access session logs (efficient storage)
         if (logs.length > 2000) logs = logs.slice(0, 2000);
         localStorage.setItem(STATS_LOGS_KEY, JSON.stringify(logs));
 
-        // 2. Update Daily Aggregated Summary
+        // 2. 日別集計サマリーの更新
         let dailySummary = {};
         try {
           const rawSummary = localStorage.getItem(STATS_DAILY_KEY);
@@ -8212,60 +8286,62 @@
           dailySummary[dateStr] = {
             date: dateStr,
             dayOfWeek: dayOfWeek,
-            totalVisits: 0,
-            newSessions: 0,
-            mobileVisits: 0,
-            desktopVisits: 0,
-            lastRecordedCount: currentCount,
-            firstRecordedAt: timeStr,
-            lastRecordedAt: timeStr
+            totalMatches: 0,
+            wins: 0,
+            losses: 0,
+            draws: 0,
+            mobileMatches: 0,
+            desktopMatches: 0,
+            lastPersonalMatch: personalMatchNum,
+            lastGlobalCount: currentGlobalMatches,
+            lastMatchAt: timeStr
           };
         }
 
-        dailySummary[dateStr].totalVisits += 1;
-        if (isNewSession) dailySummary[dateStr].newSessions += 1;
-        if (isMobileDevice) dailySummary[dateStr].mobileVisits += 1;
-        else dailySummary[dateStr].desktopVisits += 1;
-        dailySummary[dateStr].lastRecordedCount = currentCount;
-        dailySummary[dateStr].lastRecordedAt = timeStr;
+        dailySummary[dateStr].totalMatches += 1;
+        if (resultType === 'win') dailySummary[dateStr].wins += 1;
+        else if (resultType === 'lose') dailySummary[dateStr].losses += 1;
+        else dailySummary[dateStr].draws += 1;
+
+        if (isMobileDevice) dailySummary[dateStr].mobileMatches += 1;
+        else dailySummary[dateStr].desktopMatches += 1;
+
+        dailySummary[dateStr].lastPersonalMatch = personalMatchNum;
+        dailySummary[dateStr].lastGlobalCount = currentGlobalMatches;
+        dailySummary[dateStr].lastMatchAt = timeStr;
 
         localStorage.setItem(STATS_DAILY_KEY, JSON.stringify(dailySummary));
       } catch (err) {
-        console.warn('Analytics logging notice:', err);
+        console.warn('Match analytics logging notice:', err);
       }
     }
 
     // ==========================================
-    // Public Global Analytics API (for future screens & export)
+    // Public Global Match Analytics API
     // ==========================================
-    window.getAccessStatistics = function() {
+    window.getMatchStatistics = function() {
       try {
         const rawLogs = localStorage.getItem(STATS_LOGS_KEY);
         const rawSummary = localStorage.getItem(STATS_DAILY_KEY);
         const logs = rawLogs ? JSON.parse(rawLogs) : [];
         const daily = rawSummary ? JSON.parse(rawSummary) : {};
-        const currentCount = parseInt(localStorage.getItem(LOCAL_COUNTER_KEY) || '0', 10);
+        const globalCount = getGlobalMatchesCount();
+        const personalCount = getPersonalMatchesCount();
 
-        // Hourly distribution breakdown
-        const hourlyDistribution = Array(24).fill(0);
+        // 勝敗内訳
+        let wins = 0, losses = 0, draws = 0;
         logs.forEach(l => {
-          if (typeof l.hour === 'number' && l.hour >= 0 && l.hour < 24) {
-            hourlyDistribution[l.hour]++;
-          }
-        });
-
-        // Device breakdown
-        const deviceCounts = { Mobile: 0, Tablet: 0, Desktop: 0 };
-        logs.forEach(l => {
-          if (deviceCounts[l.device] !== undefined) deviceCounts[l.device]++;
+          if (l.result === 'win') wins++;
+          else if (l.result === 'lose') losses++;
+          else if (l.result === 'draw') draws++;
         });
 
         return {
-          currentGlobalCount: currentCount,
-          totalLoggedVisits: logs.length,
+          globalMatches: globalCount,
+          personalMatches: personalCount,
+          loggedMatchesCount: logs.length,
+          stats: { wins, losses, draws, winRate: logs.length > 0 ? ((wins / logs.length) * 100).toFixed(1) + '%' : '0%' },
           dailySummary: daily,
-          hourlyDistribution: hourlyDistribution,
-          deviceBreakdown: deviceCounts,
           recentLogs: logs.slice(0, 100)
         };
       } catch (e) {
@@ -8273,25 +8349,28 @@
       }
     };
 
-    // CSVエクスポート機能（Excelやスプレッドシートで分析可能）
-    window.exportAccessAnalyticsCSV = function() {
+    // CSVエクスポート機能
+    window.exportMatchAnalyticsCSV = function() {
       try {
-        const stats = window.getAccessStatistics();
+        const stats = window.getMatchStatistics();
         if (!stats.dailySummary) {
-          alert('統計データがありません。');
+          alert('対局統計データがありません。');
           return;
         }
 
-        const headers = ['日付', '曜日', '総訪問数', '新規セッション数', 'モバイル訪問', 'PC訪問', '最終カウント', '最終訪問時刻'];
+        const headers = ['日付', '曜日', '総対局数', '勝利数', '敗北数', '引分', 'モバイル対局', 'PC対局', '個人累計', '全体累計', '最終対局時刻'];
         const rows = Object.values(stats.dailySummary).map(d => [
           d.date,
           d.dayOfWeek,
-          d.totalVisits,
-          d.newSessions,
-          d.mobileVisits,
-          d.desktopVisits,
-          d.lastRecordedCount,
-          d.lastRecordedAt
+          d.totalMatches,
+          d.wins,
+          d.losses,
+          d.draws,
+          d.mobileMatches,
+          d.desktopMatches,
+          d.lastPersonalMatch,
+          d.lastGlobalCount,
+          d.lastMatchAt
         ]);
 
         let csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [
@@ -8302,7 +8381,7 @@
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement('a');
         link.setAttribute('href', encodedUri);
-        link.setAttribute('download', `connect4_3d_access_stats_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', `connect4_3d_match_stats_${new Date().toISOString().split('T')[0]}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -8311,41 +8390,14 @@
       }
     };
 
-    // JSONエクスポート機能
-    window.exportAccessAnalyticsJSON = function() {
-      try {
-        const data = window.getAccessStatistics();
-        const jsonStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2));
-        const link = document.createElement('a');
-        link.setAttribute('href', jsonStr);
-        link.setAttribute('download', `connect4_3d_access_analytics_${new Date().toISOString().split('T')[0]}.json`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } catch (e) {
-        console.error('JSON Export Error:', e);
-      }
-    };
-
-    // コンソールで統計を一覧表示するヘルパー
-    window.printAccessStatistics = function() {
-      const stats = window.getAccessStatistics();
-      console.log('%c📊 立体四目並べ3D アクセス統計サマリー', 'color:#38bdf8; font-weight:bold; font-size:14px;');
-      console.log('累計グローバルカウント:', stats.currentGlobalCount);
-      console.log('端末内ログ記録件数:', stats.totalLoggedVisits);
-      console.table(stats.dailySummary);
-      console.log('デバイス内訳:', stats.deviceBreakdown);
-      return stats;
-    };
-
-    function refreshAccessCounter() {
+    function refreshMatchCounter() {
       playSoundEffect('tap');
-      const badge = document.getElementById('headerAccessCounter');
+      const badge = document.getElementById('headerMatchCounter');
       if (badge) {
         badge.style.transform = 'scale(0.94)';
         setTimeout(() => { badge.style.transform = ''; }, 180);
       }
-      initAccessCounter();
+      initMatchCounter();
     }
 
     // Start 3D Loop
@@ -8361,7 +8413,7 @@
 
     resetGame();
     switchMobileTab(currentMobileTab);
-    initAccessCounter();
+    initMatchCounter();
     showCanvasHintTemporary(3500);
   </script>
 </body>
