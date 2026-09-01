@@ -2266,6 +2266,57 @@
       border-radius: 4px;
       text-transform: uppercase;
     }
+    /* Access Analytics Dashboard Styles */
+    .btn-analytics-header {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(59, 130, 246, 0.25));
+      border: 1px solid rgba(6, 182, 212, 0.5);
+      color: #38bdf8;
+    }
+    .btn-analytics-header:hover {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.35), rgba(59, 130, 246, 0.4));
+      color: #ffffff;
+      box-shadow: 0 0 14px rgba(6, 182, 212, 0.4);
+      transform: translateY(-1px);
+    }
+    .analytics-filter-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #cbd5e1;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .analytics-filter-btn:hover {
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+    .analytics-filter-btn.active {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+      font-weight: 800;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+    }
+    .chart-tooltip {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      color: #ffffff;
+      pointer-events: none;
+      z-index: 100;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+      transform: translate(-50%, -100%);
+      margin-top: -8px;
+      white-space: nowrap;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -2298,6 +2349,9 @@
       </button>
       <button type="button" class="btn-heroes" id="btnShowHeroesHeader" onclick="openHeroesModal()" title="AIに勝利した勇者たちの一覧を見る">
         🏆 <span>AIに勝利した勇者たち</span>
+      </button>
+      <button type="button" class="btn-admin-header btn-analytics-header" id="btnAdminAnalyticsHeader" onclick="openAccessAnalyticsModal()" title="【開発者限定】日々のユーザーアクセス数・訪問者数・IP/端末統計ダッシュボード" style="display:none;">
+        📊 <span>アクセス解析 (Dev)</span>
       </button>
       <button type="button" class="btn-admin-header" id="btnAdminPanelHeader" onclick="openAdminModal()" title="管理者専用AI学習・棋譜解析センター" style="display:none;">
         🧠 <span>管理者・AI学習</span>
@@ -2451,36 +2505,27 @@
         </select>
       </div>
 
-      <div class="action-btn-group">
-        <button type="button" class="btn-reset" onclick="resetGame()" title="盤面を初期化して再開">🔄 リセット</button>
-        <button type="button" class="btn-undo" id="btnUndoMain" onclick="undoMove()" title="直前の手を取り消して指し直す">↩️ 待った</button>
-      </div>
-
-      <div class="form-group" style="margin-top: 4px;">
-        <button type="button" class="btn-heroes-panel" onclick="openHeroesModal()">
-          🏆 AIに勝利した勇者たち (直近30名)
-        </button>
-      </div>
-
-      <!--
-      【支柱クイック選択機能：プレイ中に使用しないため一時コメントアウト（復活可能性のため保持）】
-      <div class="panel-title" style="margin-top: 10px;">
-        🎯 支柱クイック選択
-      </div>
-      <div class="quick-selector" id="quickSelector">
-      </div>
-      -->
-
-      <!-- 設定完了後の対戦画面へ進むボタングループ -->
-      <div class="start-battle-cta-group">
+      <!-- 設定完了後の対戦画面へ進むボタングループ (設定完了直後に目に入る最上段配置) -->
+      <div class="start-battle-cta-group" style="margin-top: 14px;">
         <button type="button" class="btn-start-battle-cta" onclick="goToBattleScreen()">
           <span>⚔️ この設定で対戦スタート！（対戦画面へ）</span>
           <span class="cta-arrow">➔</span>
         </button>
       </div>
 
-      <!-- リアルタイム対戦設定サマリー -->
-      <div class="setup-summary-card">
+      <div class="action-btn-group" style="margin-top: 10px;">
+        <button type="button" class="btn-reset" onclick="resetGame()" title="盤面を初期化して再開">🔄 リセット</button>
+        <button type="button" class="btn-undo" id="btnUndoMain" onclick="undoMove()" title="直前の手を取り消して指し直す">↩️ 待った</button>
+      </div>
+
+      <div class="form-group" style="margin-top: 6px;">
+        <button type="button" class="btn-heroes-panel" onclick="openHeroesModal()">
+          🏆 AIに勝利した勇者たち (直近30名)
+        </button>
+      </div>
+
+      <!-- リアルタイム対戦設定サマリー (下部に配置) -->
+      <div class="setup-summary-card" style="margin-top: 12px;">
         <div class="summary-card-title">📋 現在の対戦設定</div>
         <div class="summary-grid">
           <div class="summary-item"><span class="s-label">プレイヤー</span><span class="s-val" id="sumPlayer">人間</span></div>
@@ -3156,9 +3201,210 @@
         </table>
       </div>
 
-      <div class="modal-actions" style="margin-top:14px; display:flex; justify-content:space-between; flex-direction:row;">
-        <span style="font-size:11px; color:#94a3b8; align-self:center;">※この管理者パネルは開発環境または専用URL（?admin=...）のみでアクセス可能です。</span>
+      <div class="modal-actions" style="margin-top:14px; display:flex; justify-content:space-between; flex-direction:row; flex-wrap:wrap; gap:8px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button type="button" class="modal-btn-secondary" onclick="closeAdminModal(); openAccessAnalyticsModal();" style="padding:6px 14px; font-size:11.5px; color:#38bdf8; border-color:rgba(56,189,248,0.4); display:inline-flex; align-items:center; gap:6px;">
+            📊 ユーザーアクセス解析を見る ➔
+          </button>
+          <span style="font-size:11px; color:#94a3b8; align-self:center;">※この管理者パネルは開発環境または専用URL（?admin=...）のみでアクセス可能です。</span>
+        </div>
         <button type="button" class="modal-btn-secondary" onclick="closeAdminModal()" style="padding:6px 20px;">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑨ 管理者専用・ユーザーアクセス解析ダッシュボード モーダル -->
+  <div class="modal-overlay" id="accessAnalyticsModal" style="display:none; z-index:1050;">
+    <div class="modal-card admin-modal-card" style="border-color:rgba(56,189,248,0.45); box-shadow:0 20px 60px rgba(0,0,0,0.8), 0 0 35px rgba(56,189,248,0.25);">
+      <!-- Header -->
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid rgba(56,189,248,0.3); padding-bottom:10px;">
+        <div>
+          <h2 style="font-size:17.5px; font-weight:800; color:#38bdf8; display:flex; align-items:center; gap:8px;">
+            📊 管理者・ユーザーアクセス解析ダッシュボード
+            <span style="font-size:9.5px; padding:2px 7px; border-radius:4px; background:rgba(56,189,248,0.2); color:#38bdf8; border:1px solid rgba(56,189,248,0.4); font-weight:800;">DEV-ONLY</span>
+          </h2>
+          <p style="font-size:11px; color:#94a3b8; margin-top:2px;">
+            日ごとのアクセス数(PV)・訪問者数(UU)・端末/OS/ブラウザ統計・時間帯別利用傾向 (※開発者URL限定)
+          </p>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button type="button" class="modal-btn-secondary" onclick="fetchAndRenderAccessAnalytics()" style="padding:4px 10px; font-size:11px; color:#38bdf8; border-color:rgba(56,189,248,0.4);">
+            🔄 更新
+          </button>
+          <button type="button" class="modal-btn-secondary" onclick="downloadAccessAnalyticsCSV()" style="padding:4px 10px; font-size:11px; color:#4ade80; border-color:rgba(74,222,128,0.4);">
+            📥 CSV出力
+          </button>
+          <button type="button" onclick="closeAccessAnalyticsModal()" style="background:none; border:none; color:#9ca3af; font-size:22px; cursor:pointer; padding:2px 6px; line-height:1;">✕</button>
+        </div>
+      </div>
+
+      <!-- Date Range Filter Tabs -->
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:10px; background:rgba(15,23,42,0.6); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; color:#e2e8f0;">
+          <span>📅 表示期間:</span>
+          <button type="button" class="analytics-filter-btn" onclick="filterAnalyticsDateRange(7, this)">過去7日間</button>
+          <button type="button" class="analytics-filter-btn" onclick="filterAnalyticsDateRange(14, this)">過去14日間</button>
+          <button type="button" class="analytics-filter-btn active" onclick="filterAnalyticsDateRange(30, this)">過去30日間</button>
+          <button type="button" class="analytics-filter-btn" onclick="filterAnalyticsDateRange(0, this)">全期間</button>
+        </div>
+        <div style="font-size:11px; color:#94a3b8;" id="analyticsDateRangeLabel">
+          2026/08/14 〜 2026/08/31 (18日間)
+        </div>
+      </div>
+
+      <!-- 4 Top KPI Cards Grid -->
+      <div class="admin-kpi-grid" style="margin-top:10px;">
+        <div class="admin-kpi-card" style="border-color:rgba(56,189,248,0.25);">
+          <span class="admin-kpi-label">本日のアクセス数 (Today PV / UU)</span>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span class="admin-kpi-val" id="analyticsKpiTodayPv" style="color:#38bdf8;">0 PV</span>
+            <span style="font-size:12px; color:#94a3b8;" id="analyticsKpiTodayUv">(0 UU)</span>
+          </div>
+          <span style="font-size:10px; color:#4ade80;" id="analyticsKpiTodayDiff">● リアルタイム集計中</span>
+        </div>
+        <div class="admin-kpi-card" style="border-color:rgba(168,85,247,0.25);">
+          <span class="admin-kpi-label">期間内 累計アクセス (Total PV / UU)</span>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span class="admin-kpi-val" id="analyticsKpiTotalPv" style="color:#c084fc;">0 PV</span>
+            <span style="font-size:12px; color:#94a3b8;" id="analyticsKpiTotalUv">(0 UU)</span>
+          </div>
+          <span style="font-size:10px; color:#cbd5e1;" id="analyticsKpiAvgDaily">1日平均: 0 PV</span>
+        </div>
+        <div class="admin-kpi-card" style="border-color:rgba(245,158,11,0.25);">
+          <span class="admin-kpi-label">端末構成比 (Device Ratio)</span>
+          <div style="display:flex; align-items:baseline; gap:6px;">
+            <span class="admin-kpi-val" id="analyticsKpiMobileRatio" style="color:#fbbf24; font-size:17px;">スマホ 0%</span>
+          </div>
+          <span style="font-size:10px; color:#94a3b8;" id="analyticsKpiDeviceSub">PC: 0% / タブレット: 0%</span>
+        </div>
+        <div class="admin-kpi-card" style="border-color:rgba(34,197,94,0.25);">
+          <span class="admin-kpi-label">アクセス集中ピーク時間帯</span>
+          <span class="admin-kpi-val" id="analyticsKpiPeakHour" style="color:#4ade80; font-size:16px;">20:00〜22:00</span>
+          <span style="font-size:10px; color:#94a3b8;">夜間アクティブ率が高い傾向</span>
+        </div>
+      </div>
+
+      <!-- 📈 日別アクセス推移グラフ (Daily Traffic Chart) -->
+      <div style="background:rgba(15,23,42,0.7); border:1px solid rgba(56,189,248,0.25); border-radius:8px; padding:12px; margin-top:8px; position:relative;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:12.5px; font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:6px;">
+            📈 日別アクセス推移 (PV: 青棒グラフ / UU: 緑ライン)
+          </span>
+          <div style="display:flex; gap:12px; font-size:10.5px; color:#cbd5e1;">
+            <span style="display:flex; align-items:center; gap:4px;"><span style="display:inline-block; width:10px; height:10px; background:#38bdf8; border-radius:2px;"></span> PV (閲覧数)</span>
+            <span style="display:flex; align-items:center; gap:4px;"><span style="display:inline-block; width:10px; height:10px; background:#4ade80; border-radius:2px;"></span> UU (訪問者数)</span>
+          </div>
+        </div>
+
+        <!-- Dynamic Bar Chart Container -->
+        <div id="analyticsDailyChartWrap" style="width:100%; height:160px; display:flex; align-items:flex-end; gap:4px; padding-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.1); position:relative; overflow-x:auto;">
+          <!-- Rendered dynamically -->
+        </div>
+        <div id="chartTooltip" class="chart-tooltip"></div>
+      </div>
+
+      <!-- 2-Column Details: Device & OS & Browser Breakdown + Hourly & Referrers -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-top:10px;">
+        <!-- Left Column: 端末・OS・ブラウザ詳細 -->
+        <div style="background:rgba(15,23,42,0.7); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:10px;">
+          <div style="font-size:12px; font-weight:700; color:#fbbf24; display:flex; align-items:center; gap:6px;">
+            📱 端末・OS・ブラウザ詳細統計
+          </div>
+
+          <!-- Device Progress Bars -->
+          <div>
+            <div style="font-size:11px; color:#94a3b8; font-weight:600; margin-bottom:4px;">端末種別 (Device)</div>
+            <div style="display:flex; flex-direction:column; gap:4px;" id="analyticsDeviceBars">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- OS Breakdown -->
+          <div style="border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
+            <div style="font-size:11px; color:#94a3b8; font-weight:600; margin-bottom:4px;">OS構成比 (Operating System)</div>
+            <div style="display:flex; flex-direction:column; gap:4px;" id="analyticsOsBars">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Browser Breakdown -->
+          <div style="border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
+            <div style="font-size:11px; color:#94a3b8; font-weight:600; margin-bottom:4px;">ブラウザ構成比 (Browser)</div>
+            <div style="display:flex; flex-direction:column; gap:4px;" id="analyticsBrowserBars">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: 24時間帯別分布 ＆ 参照元 (Referrers) -->
+        <div style="background:rgba(15,23,42,0.7); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:10px;">
+          <div style="font-size:12px; font-weight:700; color:#c084fc; display:flex; align-items:center; gap:6px;">
+            ⏰ 24時間帯別アクセス分布 ＆ 参照元
+          </div>
+
+          <!-- 24-Hour Distribution Mini Chart -->
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#94a3b8; font-weight:600; margin-bottom:4px;">
+              <span>時間帯別PV (0時〜23時)</span>
+              <span style="font-size:10px; color:#64748b;">ピーク: 昼(12-13時) / 夜(19-23時)</span>
+            </div>
+            <div id="analyticsHourlyChart" style="height:70px; display:flex; align-items:flex-end; gap:2px; padding-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.08); position:relative;">
+              <!-- 24 hourly bars -->
+            </div>
+          </div>
+
+          <!-- Top Referrers -->
+          <div style="border-top:1px solid rgba(255,255,255,0.06); padding-top:8px; flex:1;">
+            <div style="font-size:11px; color:#94a3b8; font-weight:600; margin-bottom:6px;">🔗 流入元・参照元ランキング (Referrers)</div>
+            <div style="display:flex; flex-direction:column; gap:4px;" id="analyticsReferrersList">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 📋 直近アクセスログ一覧 (最新100件) -->
+      <div style="margin-top:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+          <div class="admin-section-title" style="margin:0;">
+            📋 直近リアルタイムアクセスログ一覧 (最新100件)
+          </div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <input type="text" id="analyticsLogSearchInput" placeholder="🔍 IP/端末/ブラウザで絞り込み..." oninput="filterAccessLogsTable()" style="background:#0f172a; border:1px solid rgba(255,255,255,0.2); color:#fff; padding:3px 8px; border-radius:4px; font-size:11px; width:180px;">
+          </div>
+        </div>
+        <div class="admin-table-wrap" style="max-height:220px;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th style="width:36px;">No.</th>
+                <th>アクセス日時</th>
+                <th>IPアドレス</th>
+                <th>端末種別</th>
+                <th>OS</th>
+                <th>ブラウザ</th>
+                <th>参照元 / パス</th>
+                <th>アクション</th>
+              </tr>
+            </thead>
+            <tbody id="analyticsLogsTableBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="modal-actions" style="margin-top:14px; display:flex; justify-content:space-between; flex-direction:row; flex-wrap:wrap; gap:8px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button type="button" class="modal-btn-secondary" onclick="closeAccessAnalyticsModal(); openAdminModal();" style="padding:6px 12px; font-size:11px; color:#fca5a5; border-color:rgba(239,68,68,0.4);">
+            🧠 AI学習・撃破棋譜センターへ ➔
+          </button>
+          <span style="font-size:10.5px; color:#64748b;">※この画面は開発者専用URL限定で稼働しています。</span>
+        </div>
+        <button type="button" class="modal-btn-secondary" onclick="closeAccessAnalyticsModal()" style="padding:6px 20px;">
           閉じる
         </button>
       </div>
@@ -5700,11 +5946,11 @@
     function initAdminHeaderButton() {
       const btn = document.getElementById('btnAdminPanelHeader');
       if (btn) {
-        if (checkIsAdminUser()) {
-          btn.style.display = 'inline-flex';
-        } else {
-          btn.style.display = 'none';
-        }
+        btn.style.display = checkIsAdminUser() ? 'inline-flex' : 'none';
+      }
+      const analyticsBtn = document.getElementById('btnAdminAnalyticsHeader');
+      if (analyticsBtn) {
+        analyticsBtn.style.display = checkIsAdminUser() ? 'inline-flex' : 'none';
       }
 
       // レート表示やクレジットバッジ（開発者環境のみクリック可能）
@@ -5750,6 +5996,360 @@
         clearInterval(serverPollInterval);
         serverPollInterval = null;
       }
+    }
+
+    // ==========================================
+    // 📊 管理者・ユーザーアクセス解析ダッシュボード (Dev-Only)
+    // ==========================================
+    let cachedAnalyticsData = null;
+    let currentAnalyticsRangeDays = 30;
+    let analyticsRawLogs = [];
+
+    function openAccessAnalyticsModal() {
+      const modal = document.getElementById('accessAnalyticsModal');
+      if (!modal) return;
+      modal.classList.add('active');
+      modal.classList.add('show');
+      modal.style.display = 'flex';
+      modal.style.opacity = '1';
+      modal.style.pointerEvents = 'auto';
+      playSoundEffect('tap');
+      fetchAndRenderAccessAnalytics(currentAnalyticsRangeDays);
+    }
+
+    function closeAccessAnalyticsModal() {
+      const modal = document.getElementById('accessAnalyticsModal');
+      if (modal) {
+        modal.classList.remove('active');
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+        modal.style.opacity = '0';
+        modal.style.pointerEvents = 'none';
+      }
+      playSoundEffect('tap');
+      hideChartTooltip();
+    }
+
+    function filterAnalyticsDateRange(days, btnEl) {
+      currentAnalyticsRangeDays = days;
+      if (btnEl) {
+        const parent = btnEl.parentElement;
+        if (parent) {
+          parent.querySelectorAll('.analytics-filter-btn').forEach(b => b.classList.remove('active'));
+        }
+        btnEl.classList.add('active');
+      }
+      playSoundEffect('tap');
+      fetchAndRenderAccessAnalytics(days);
+    }
+
+    async function fetchAndRenderAccessAnalytics(rangeDays = currentAnalyticsRangeDays) {
+      try {
+        const res = await fetch(`/api/admin/analytics?range=${rangeDays || 0}`);
+        if (!res.ok) throw new Error('API request failed');
+        const json = await res.json();
+        if (!json.success || !json.data) throw new Error(json.error || 'No data returned');
+
+        cachedAnalyticsData = json.data;
+        analyticsRawLogs = json.data.recentLogs || [];
+
+        // 1. Render KPIs
+        const kpi = json.data.kpis || {};
+        const todayPvEl = document.getElementById('analyticsKpiTodayPv');
+        const todayUvEl = document.getElementById('analyticsKpiTodayUv');
+        const totalPvEl = document.getElementById('analyticsKpiTotalPv');
+        const totalUvEl = document.getElementById('analyticsKpiTotalUv');
+        const avgDailyEl = document.getElementById('analyticsKpiAvgDaily');
+        const mobileRatioEl = document.getElementById('analyticsKpiMobileRatio');
+        const deviceSubEl = document.getElementById('analyticsKpiDeviceSub');
+        const peakHourEl = document.getElementById('analyticsKpiPeakHour');
+        const rangeLabelEl = document.getElementById('analyticsDateRangeLabel');
+
+        if (todayPvEl) todayPvEl.textContent = `${(kpi.todayPv || 0).toLocaleString()} PV`;
+        if (todayUvEl) todayUvEl.textContent = `(${(kpi.todayUv || 0).toLocaleString()} UU)`;
+        if (totalPvEl) totalPvEl.textContent = `${(kpi.totalPv || 0).toLocaleString()} PV`;
+        if (totalUvEl) totalUvEl.textContent = `(${(kpi.totalUv || 0).toLocaleString()} UU)`;
+        if (avgDailyEl) avgDailyEl.textContent = `1日平均: ${(kpi.avgDailyPv || 0).toLocaleString()} PV / ${(kpi.avgDailyUv || 0).toLocaleString()} UU`;
+
+        const totalDev = (kpi.devices?.mobile || 0) + (kpi.devices?.desktop || 0) + (kpi.devices?.tablet || 0);
+        const mobPct = totalDev > 0 ? Math.round(((kpi.devices?.mobile || 0) / totalDev) * 100) : 0;
+        const deskPct = totalDev > 0 ? Math.round(((kpi.devices?.desktop || 0) / totalDev) * 100) : 0;
+        const tabPct = totalDev > 0 ? Math.round(((kpi.devices?.tablet || 0) / totalDev) * 100) : 0;
+
+        if (mobileRatioEl) mobileRatioEl.textContent = `スマホ ${mobPct}%`;
+        if (deviceSubEl) deviceSubEl.textContent = `PC: ${deskPct}% / タブレット: ${tabPct}%`;
+        if (peakHourEl) peakHourEl.textContent = `${kpi.peakHourStr || '20:00〜22:00'} (集中)`;
+
+        if (rangeLabelEl && json.data.dailyList && json.data.dailyList.length > 0) {
+          const list = json.data.dailyList;
+          const firstDate = list[0].date.replace(/-/g, '/');
+          const lastDate = list[list.length - 1].date.replace(/-/g, '/');
+          rangeLabelEl.textContent = `${firstDate} 〜 ${lastDate} (${list.length}日間)`;
+        }
+
+        // 2. Render Daily Traffic Bar Chart
+        renderAccessDailyChart(json.data.dailyList || []);
+
+        // 3. Render Breakdowns (Devices, OS, Browser, Hourly, Referrers)
+        renderAccessBreakdowns(
+          kpi.devices || {},
+          json.data.osBreakdown || {},
+          json.data.browserBreakdown || {},
+          json.data.hourlyDistribution || [],
+          json.data.topReferrers || []
+        );
+
+        // 4. Render Access Logs Table
+        renderAccessLogsTable(analyticsRawLogs);
+      } catch (err) {
+        console.warn('Fetch Access Analytics Error:', err);
+      }
+    }
+
+    function renderAccessDailyChart(dailyList) {
+      const container = document.getElementById('analyticsDailyChartWrap');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (!dailyList || dailyList.length === 0) {
+        container.innerHTML = '<div style="width:100%; text-align:center; color:#94a3b8; font-size:12px; margin:auto;">期間内のアクセスデータがありません</div>';
+        return;
+      }
+
+      const maxPv = Math.max(...dailyList.map(d => d.pageViews || 0), 10);
+      const isNarrow = dailyList.length > 20;
+
+      dailyList.forEach((d, idx) => {
+        const pv = d.pageViews || 0;
+        const uv = d.uniqueVisitors || 0;
+        const pvHeightPct = Math.max(6, Math.round((pv / maxPv) * 100));
+        const uvHeightPct = Math.max(4, Math.round((uv / maxPv) * 100));
+
+        const barCol = document.createElement('div');
+        barCol.style.cssText = `flex:1; min-width:${isNarrow ? '14px' : '22px'}; max-width:38px; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; position:relative; cursor:pointer;`;
+
+        // Date label at bottom
+        const shortDate = d.date.split('-').slice(1).join('/'); // MM/DD
+        const label = document.createElement('div');
+        label.style.cssText = 'position:absolute; bottom:0; font-size:9px; color:#94a3b8; white-space:nowrap; transform:scale(0.85);';
+        if (!isNarrow || idx % 2 === 0 || idx === dailyList.length - 1) {
+          label.textContent = shortDate;
+        }
+
+        // PV Bar (cyan blue) with UV inner marker (green)
+        const pvBar = document.createElement('div');
+        pvBar.style.cssText = `width:80%; height:${pvHeightPct}%; background:linear-gradient(180deg, #38bdf8, #0284c7); border-radius:3px 3px 0 0; position:relative; transition:all 0.2s; margin-bottom:16px;`;
+        
+        // UV overlay bar
+        const uvBar = document.createElement('div');
+        uvBar.style.cssText = `position:absolute; bottom:0; left:20%; width:60%; height:${Math.round((uvHeightPct / pvHeightPct) * 100)}%; background:linear-gradient(180deg, #4ade80, #16a34a); border-radius:2px 2px 0 0; opacity:0.85;`;
+        pvBar.appendChild(uvBar);
+
+        // Hover events for tooltip
+        barCol.onmouseenter = (e) => {
+          pvBar.style.filter = 'brightness(1.25)';
+          showChartTooltip(e, `<b>${d.date} (${d.dayOfWeek || ''})</b><br>👀 閲覧数 (PV): <b style="color:#38bdf8;">${pv.toLocaleString()}</b> 回<br>👤 訪問者 (UU): <b style="color:#4ade80;">${uv.toLocaleString()}</b> 人<br>📱 スマホ: ${d.mobilePv || 0} / 💻 PC: ${d.desktopPv || 0}`);
+        };
+        barCol.onmouseleave = () => {
+          pvBar.style.filter = 'none';
+          hideChartTooltip();
+        };
+
+        barCol.appendChild(pvBar);
+        barCol.appendChild(label);
+        container.appendChild(barCol);
+      });
+    }
+
+    function showChartTooltip(e, html) {
+      const tooltip = document.getElementById('chartTooltip');
+      if (!tooltip) return;
+      tooltip.innerHTML = html;
+      tooltip.style.display = 'block';
+      const rect = e.currentTarget.getBoundingClientRect();
+      const parentRect = tooltip.parentElement.getBoundingClientRect();
+      tooltip.style.left = `${rect.left - parentRect.left + rect.width / 2}px`;
+      tooltip.style.top = `${rect.top - parentRect.top - 6}px`;
+    }
+
+    function hideChartTooltip() {
+      const tooltip = document.getElementById('chartTooltip');
+      if (tooltip) tooltip.style.display = 'none';
+    }
+
+    function renderProgressBarRow(label, count, total, color = '#38bdf8') {
+      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+      return `
+        <div style="font-size:11px;">
+          <div style="display:flex; justify-content:space-between; color:#cbd5e1; margin-bottom:2px;">
+            <span>${escapeHtml(label)}</span>
+            <span style="font-weight:700; color:#fff;">${count.toLocaleString()} <span style="font-size:10px; color:#94a3b8; font-weight:normal;">(${pct}%)</span></span>
+          </div>
+          <div style="width:100%; height:5px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden;">
+            <div style="width:${pct}%; height:100%; background:${color}; border-radius:3px;"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAccessBreakdowns(devices, osObj, browserObj, hourlyList, referrers) {
+      // 1. Devices
+      const devContainer = document.getElementById('analyticsDeviceBars');
+      if (devContainer) {
+        const total = (devices.mobile || 0) + (devices.desktop || 0) + (devices.tablet || 0);
+        devContainer.innerHTML = [
+          renderProgressBarRow('📱 スマートフォン (Mobile)', devices.mobile || 0, total, '#38bdf8'),
+          renderProgressBarRow('💻 パソコン (Desktop)', devices.desktop || 0, total, '#a855f7'),
+          renderProgressBarRow('📟 タブレット (Tablet)', devices.tablet || 0, total, '#f59e0b')
+        ].join('');
+      }
+
+      // 2. OS Breakdown
+      const osContainer = document.getElementById('analyticsOsBars');
+      if (osContainer) {
+        const entries = Object.entries(osObj || {}).sort((a, b) => b[1] - a[1]).slice(0, 4);
+        const total = entries.reduce((s, e) => s + e[1], 0);
+        osContainer.innerHTML = entries.map(([os, cnt], idx) => {
+          const colors = ['#38bdf8', '#4ade80', '#fbbf24', '#f472b6'];
+          return renderProgressBarRow(os, cnt, total, colors[idx % colors.length]);
+        }).join('') || '<div style="color:#64748b; font-size:10.5px;">データ蓄積中</div>';
+      }
+
+      // 3. Browser Breakdown
+      const browserContainer = document.getElementById('analyticsBrowserBars');
+      if (browserContainer) {
+        const entries = Object.entries(browserObj || {}).sort((a, b) => b[1] - a[1]).slice(0, 4);
+        const total = entries.reduce((s, e) => s + e[1], 0);
+        browserContainer.innerHTML = entries.map(([br, cnt], idx) => {
+          const colors = ['#60a5fa', '#34d399', '#f87171', '#c084fc'];
+          return renderProgressBarRow(br, cnt, total, colors[idx % colors.length]);
+        }).join('') || '<div style="color:#64748b; font-size:10.5px;">データ蓄積中</div>';
+      }
+
+      // 4. 24-Hourly Mini Chart
+      const hourlyContainer = document.getElementById('analyticsHourlyChart');
+      if (hourlyContainer) {
+        hourlyContainer.innerHTML = '';
+        const maxH = Math.max(...(hourlyList || []).map(h => typeof h === 'object' ? (h.count || 0) : h), 1);
+        for (let hour = 0; hour < 24; hour++) {
+          const count = (hourlyList && hourlyList[hour] !== undefined) 
+            ? (typeof hourlyList[hour] === 'object' ? hourlyList[hour].count : hourlyList[hour]) 
+            : 0;
+          const hPct = Math.max(8, Math.round((count / maxH) * 100));
+
+          const col = document.createElement('div');
+          col.style.cssText = 'flex:1; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; position:relative;';
+          
+          const bar = document.createElement('div');
+          bar.style.cssText = `width:80%; height:${hPct}%; background:${hour >= 18 && hour <= 23 ? '#c084fc' : (hour >= 11 && hour <= 14 ? '#38bdf8' : 'rgba(255,255,255,0.25)')}; border-radius:2px 2px 0 0;`;
+          bar.title = `${hour}時: ${count} PV`;
+
+          if (hour % 6 === 0 || hour === 23) {
+            const hLabel = document.createElement('div');
+            hLabel.style.cssText = 'position:absolute; bottom:0; font-size:8.5px; color:#64748b;';
+            hLabel.textContent = `${hour}h`;
+            col.appendChild(hLabel);
+          }
+
+          col.appendChild(bar);
+          hourlyContainer.appendChild(col);
+        }
+      }
+
+      // 5. Referrers
+      const refContainer = document.getElementById('analyticsReferrersList');
+      if (refContainer) {
+        if (!referrers || referrers.length === 0) {
+          refContainer.innerHTML = '<div style="color:#64748b; font-size:10.5px;">直接アクセス (Direct) / ブックマークが中心です</div>';
+        } else {
+          refContainer.innerHTML = referrers.slice(0, 4).map(r => `
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
+              <span style="color:#e2e8f0; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:200px;" title="${escapeHtml(r.referrer || 'Direct')}">
+                🔗 ${escapeHtml(r.referrer || 'Direct (直接・ブックマーク)')}
+              </span>
+              <span style="font-weight:700; color:#38bdf8;">${(r.count || 0).toLocaleString()} <span style="font-size:9.5px; color:#94a3b8; font-weight:normal;">PV</span></span>
+            </div>
+          `).join('');
+        }
+      }
+    }
+
+    function renderAccessLogsTable(logs) {
+      const tbody = document.getElementById('analyticsLogsTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (!logs || logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#94a3b8;">アクセスログはまだ記録されていません。</td></tr>';
+        return;
+      }
+
+      logs.slice(0, 100).forEach((l, idx) => {
+        const tr = document.createElement('tr');
+        const devBadgeColor = l.device === 'Mobile' ? 'rgba(56,189,248,0.2)' : (l.device === 'Tablet' ? 'rgba(245,158,11,0.2)' : 'rgba(168,85,247,0.2)');
+        const devTextColor = l.device === 'Mobile' ? '#38bdf8' : (l.device === 'Tablet' ? '#fbbf24' : '#c084fc');
+        const devIcon = l.device === 'Mobile' ? '📱' : (l.device === 'Tablet' ? '📟' : '💻');
+
+        const timeStr = l.timestamp ? new Date(l.timestamp).toLocaleString('ja-JP', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' }) : (l.time || '-');
+
+        tr.innerHTML = `
+          <td style="color:#94a3b8; font-size:10.5px;">#${idx + 1}</td>
+          <td style="font-size:11px; color:#e2e8f0; white-space:nowrap;">${timeStr}</td>
+          <td style="font-family:monospace; font-size:10.5px; color:#93c5fd;">${escapeHtml(l.ip || '127.0.0.1')}</td>
+          <td>
+            <span style="background:${devBadgeColor}; color:${devTextColor}; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; display:inline-flex; align-items:center; gap:3px;">
+              ${devIcon} ${l.device || 'Desktop'}
+            </span>
+          </td>
+          <td style="font-size:11px; color:#cbd5e1;">${escapeHtml(l.os || 'Unknown')}</td>
+          <td style="font-size:11px; color:#cbd5e1;">${escapeHtml(l.browser || 'Unknown')}</td>
+          <td style="font-size:10.5px; color:#94a3b8; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(l.referrer || '/')}">${escapeHtml(l.referrer || '/')}</td>
+          <td style="font-size:10.5px; color:#4ade80;">${escapeHtml(l.action || 'アクセス')}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterAccessLogsTable() {
+      const q = (document.getElementById('analyticsLogSearchInput')?.value || '').toLowerCase().trim();
+      if (!analyticsRawLogs || analyticsRawLogs.length === 0) return;
+      if (!q) {
+        renderAccessLogsTable(analyticsRawLogs);
+        return;
+      }
+      const filtered = analyticsRawLogs.filter(l => {
+        return (l.ip && l.ip.toLowerCase().includes(q)) ||
+               (l.device && l.device.toLowerCase().includes(q)) ||
+               (l.os && l.os.toLowerCase().includes(q)) ||
+               (l.browser && l.browser.toLowerCase().includes(q)) ||
+               (l.action && l.action.toLowerCase().includes(q)) ||
+               (l.referrer && l.referrer.toLowerCase().includes(q));
+      });
+      renderAccessLogsTable(filtered);
+    }
+
+    function downloadAccessAnalyticsCSV() {
+      playSoundEffect('tap');
+      window.location.href = '/api/admin/analytics/export-csv';
+    }
+
+    // ユーザーアクセス自動トラッキング
+    function trackAccessLog(actionType = 'ページ訪問') {
+      try {
+        const payload = {
+          action: actionType,
+          referrer: document.referrer || '',
+          path: window.location.pathname + window.location.search,
+          device: window.innerWidth <= 600 ? 'Mobile' : (window.innerWidth <= 1024 ? 'Tablet' : 'Desktop'),
+          screen: `${window.innerWidth}x${window.innerHeight}`
+        };
+
+        fetch('/api/analytics/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).catch(() => {});
+      } catch (e) {}
     }
 
     function updateAdminModalUI() {
@@ -8350,6 +8950,7 @@
 
         // 5. 対局詳細統計ログを端末内に蓄積
         recordMatchStatistics(resultType, history.length, difficulty, newPersonal, newGlobal);
+        trackAccessLog(`対局完了 (${resultType === 'win' ? '勝利' : resultType === 'lose' ? '敗北' : '引分'})`);
       } catch (e) {
         console.warn('Match counter increment error:', e);
       }
@@ -8544,6 +9145,7 @@
     initMatchCounter();
     fetchSharedHeroesFromServer();
     showCanvasHintTemporary(3500);
+    trackAccessLog('ページ訪問');
   </script>
 </body>
 </html>
