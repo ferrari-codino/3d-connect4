@@ -23,6 +23,20 @@ if (!fs.existsSync(DATA_DIR)) {
 const MODEL_FILE = path.join(DATA_DIR, "ai_learned_model.json");
 const PEAK_MODEL_FILE = path.join(DATA_DIR, "ai_learned_model_peak.json");
 const GAMES_FILE = path.join(DATA_DIR, "winning_games.json");
+const HEROES_FILE = path.join(DATA_DIR, "heroes.json");
+
+interface HeroRecord {
+  id: string;
+  nickname: string;
+  moves: number;
+  dateStr: string;
+  order: string;
+  difficulty: string;
+  assist1: boolean;
+  assist2: boolean;
+  timeLimit: string;
+  timestamp?: number;
+}
 
 // -------------------------------------------------------------
 // 3D Four-in-a-Row Core Game & AI Engine for Server Simulation
@@ -127,6 +141,7 @@ let globalAiModel: AiModelData = {
 
 let peakAiModel: AiModelData | null = null;
 let storedGames: WinningGame[] = [];
+let storedHeroes: HeroRecord[] = [];
 
 function loadServerStorage() {
   try {
@@ -162,6 +177,35 @@ function loadServerStorage() {
         storedGames = parsed;
       }
     }
+
+    if (fs.existsSync(HEROES_FILE)) {
+      const raw = fs.readFileSync(HEROES_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        storedHeroes = parsed;
+      }
+    }
+
+    // Seed default hero record if empty
+    if (storedHeroes.length === 0) {
+      storedHeroes = [
+        {
+          id: "hero-ekun-champion",
+          nickname: "えーくん",
+          moves: 14,
+          dateStr: "2026/08/14 10:15",
+          order: "先手",
+          difficulty: "中級",
+          assist1: true,
+          assist2: true,
+          timeLimit: "なし",
+          timestamp: Date.now() - 86400000 * 17
+        }
+      ];
+      try {
+        fs.writeFileSync(HEROES_FILE, JSON.stringify(storedHeroes, null, 2), "utf-8");
+      } catch (e) {}
+    }
   } catch (e) {
     console.warn("Error loading server persistent storage:", e);
   }
@@ -172,6 +216,7 @@ function saveServerStorage() {
   try {
     fs.writeFileSync(MODEL_FILE, JSON.stringify(globalAiModel, null, 2), "utf-8");
     fs.writeFileSync(GAMES_FILE, JSON.stringify(storedGames, null, 2), "utf-8");
+    fs.writeFileSync(HEROES_FILE, JSON.stringify(storedHeroes, null, 2), "utf-8");
 
     // Check and save Peak Model (Only if strictly improved and non-empty)
     const currentSims = globalAiModel.meta.totalSimulatedGames || 0;
@@ -873,6 +918,51 @@ app.post("/api/ai/restore-peak", (req, res) => {
     return res.status(404).json({ error: "No peak backup found" });
   } catch (e) {
     res.status(500).json({ error: "Failed to restore peak backup" });
+  }
+});
+
+// 11. List Shared Hall of Fame Heroes
+app.get("/api/heroes/list", (req, res) => {
+  try {
+    res.json({
+      success: true,
+      total: storedHeroes.length,
+      heroes: storedHeroes.slice(0, 100)
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 12. Record Shared Hall of Fame Hero Victory
+app.post("/api/heroes/record", (req, res) => {
+  try {
+    const hero: HeroRecord = req.body;
+    if (!hero || !hero.nickname) {
+      return res.status(400).json({ error: "Invalid hero record" });
+    }
+    hero.id = hero.id || `hero_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    hero.timestamp = hero.timestamp || Date.now();
+    hero.dateStr = hero.dateStr || new Date().toLocaleString("ja-JP");
+
+    // Check duplicate by id or identical timestamp+nickname+moves
+    const exists = storedHeroes.some(
+      (h) => h.id === hero.id || (h.nickname === hero.nickname && h.dateStr === hero.dateStr && h.moves === hero.moves)
+    );
+    if (!exists) {
+      storedHeroes.unshift(hero);
+      if (storedHeroes.length > 500) storedHeroes = storedHeroes.slice(0, 500);
+      saveServerStorage();
+    }
+
+    res.json({
+      success: true,
+      heroId: hero.id,
+      total: storedHeroes.length,
+      heroes: storedHeroes.slice(0, 50)
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
   }
 });
 

@@ -1019,7 +1019,11 @@
         display: flex;
         flex-direction: column;
         gap: 6px;
-        padding: 4px 6px 12px 6px;
+        padding: 4px 6px max(70px, calc(env(safe-area-inset-bottom, 24px) + 50px)) 6px;
+      }
+
+      #panelSettings {
+        padding-bottom: max(100px, calc(env(safe-area-inset-bottom, 24px) + 80px)) !important;
       }
 
       /* Responsive Tab Visibility on Mobile */
@@ -1148,8 +1152,8 @@
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 10px;
       padding: 10px 12px;
-      margin-top: 14px;
-      margin-bottom: 8px;
+      margin-top: 4px;
+      margin-bottom: 24px;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -1222,6 +1226,7 @@
 
     /* Start Battle CTA Button (対戦設定から対戦画面への直感的な導線) */
     .start-battle-cta-group {
+      margin-top: 14px;
       margin-bottom: 12px;
     }
 
@@ -1229,10 +1234,11 @@
       background: linear-gradient(135deg, #00f2ff 0%, #0284c7 100%);
       color: #000000;
       border: 1px solid rgba(255, 255, 255, 0.5);
-      padding: 12px 16px;
+      padding: 14px 18px;
+      min-height: 52px;
       border-radius: 10px;
       font-weight: 900;
-      font-size: 13.5px;
+      font-size: 14px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -1241,6 +1247,9 @@
       box-shadow: 0 0 18px rgba(0, 242, 255, 0.4);
       transition: all 0.25s ease;
       letter-spacing: 0.2px;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-appearance: none;
       animation: ctaGlowPulse 2.4s infinite ease-in-out;
     }
 
@@ -2462,6 +2471,14 @@
       </div>
       -->
 
+      <!-- 設定完了後の対戦画面へ進むボタングループ -->
+      <div class="start-battle-cta-group">
+        <button type="button" class="btn-start-battle-cta" onclick="goToBattleScreen()">
+          <span>⚔️ この設定で対戦スタート！（対戦画面へ）</span>
+          <span class="cta-arrow">➔</span>
+        </button>
+      </div>
+
       <!-- リアルタイム対戦設定サマリー -->
       <div class="setup-summary-card">
         <div class="summary-card-title">📋 現在の対戦設定</div>
@@ -2473,14 +2490,6 @@
           <div class="summary-item"><span class="s-label">アシスト</span><span class="s-val" id="sumAssist">OFF</span></div>
           <div class="summary-item"><span class="s-label">テーマ</span><span class="s-val" id="sumTheme">黒 × 白</span></div>
         </div>
-      </div>
-
-      <!-- 設定完了後の対戦画面へ進むボタングループ -->
-      <div class="start-battle-cta-group" style="margin-top: 8px;">
-        <button type="button" class="btn-start-battle-cta" onclick="goToBattleScreen()">
-          <span>⚔️ この設定で対戦スタート！（対戦画面へ）</span>
-          <span class="cta-arrow">➔</span>
-        </button>
       </div>
     </div>
 
@@ -4338,20 +4347,46 @@
             chosenMove = candidateScores[0].col;
           }
         } else if (difficulty === 'medium') {
-          // 中級: 序盤・中盤で約25%の確率でランダム揺らぎ手（または上位3候補手からランダム選択）
-          const searchRes = getBestMoveIterative(board, heights, targetDepth, timeLimitMs, aiPlayer, humanPlayer);
-          if (Math.random() < 0.25 && validMoves.length > 1) {
-            // 王手・被王手ではない通常局面でランダムに揺らぎを発生させる
-            const nonBlunderCols = validMoves.filter(c => c !== searchRes.move);
-            if (nonBlunderCols.length > 0 && Math.random() < 0.5) {
-              chosenMove = nonBlunderCols[Math.floor(Math.random() * nonBlunderCols.length)];
+          // 中級: 必然手（即時勝利の4連手・相手の3連リーチ阻止）は100%確実に指す
+          let immediateWinCol = -1;
+          for (let col of validMoves) {
+            const z = heights[col];
+            board[col + z * 16] = aiPlayer;
+            if (checkWin(board)) immediateWinCol = col;
+            board[col + z * 16] = 0;
+            if (immediateWinCol !== -1) break;
+          }
+
+          let immediateBlockCol = -1;
+          for (let col of validMoves) {
+            const z = heights[col];
+            board[col + z * 16] = humanPlayer;
+            if (checkWin(board)) immediateBlockCol = col;
+            board[col + z * 16] = 0;
+            if (immediateBlockCol !== -1) break;
+          }
+
+          if (immediateWinCol !== -1) {
+            chosenMove = immediateWinCol;
+            moveScore = 9999;
+          } else if (immediateBlockCol !== -1) {
+            chosenMove = immediateBlockCol;
+            moveScore = -8000;
+          } else {
+            // 平穏局面（王手・被王手なし）: 従来通り約25%の確率で最善手以外の候補手を選ぶ（揺らぎ）
+            const searchRes = getBestMoveIterative(board, heights, targetDepth, timeLimitMs, aiPlayer, humanPlayer);
+            if (Math.random() < 0.25 && validMoves.length > 1) {
+              const nonBestCols = validMoves.filter(c => c !== searchRes.move);
+              if (nonBestCols.length > 0) {
+                chosenMove = nonBestCols[Math.floor(Math.random() * nonBestCols.length)];
+              } else {
+                chosenMove = searchRes.move;
+              }
             } else {
               chosenMove = searchRes.move;
             }
-          } else {
-            chosenMove = searchRes.move;
+            moveScore = searchRes.score;
           }
-          moveScore = searchRes.score;
         } else {
           const searchRes = getBestMoveIterative(board, heights, targetDepth, timeLimitMs, aiPlayer, humanPlayer);
           chosenMove = searchRes.move;
@@ -4826,6 +4861,11 @@
         bestMoveScoreForHuman = -searchRes.score;
       }
 
+      // If board is fresh/empty, situation is exactly even (50% vs 50%)
+      if (history.length === 0) {
+        bestMoveScoreForHuman = 0;
+      }
+
       // Convert bestMoveScoreForHuman to situation winrate
       let evalScore = (bestMoveScoreForHuman === -Infinity) ? 0 : bestMoveScoreForHuman;
       let humanPct = 50;
@@ -5017,8 +5057,9 @@
       showGameResultModal('lose', `⏱️ 考慮時間制限（${humanTimeLimitSec}秒）を超過したため時間切れ負けとなりました。`);
     }
 
-    // Champions Hall of Fame (AIに勝利した勇者たち・全データを永続保持 / 画面表示は直近30名)
+    // Champions Hall of Fame (AIに勝利した勇者たち・サーバー共有 ＆ ローカルキャッシュ両対応)
     const HEROES_STORAGE_KEY = '3d_connect4_heroes_v1';
+    let isFetchingHeroes = false;
 
     function getHeroesList() {
       let heroes = [];
@@ -5027,7 +5068,7 @@
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
-            // Remove hardcoded sample entries (hero-sample-*) while strictly preserving "えーくん" and real user plays
+            // Remove hardcoded sample entries while strictly preserving "えーくん" and real user plays
             heroes = parsed.filter(item => {
               if (!item) return false;
               const isSample = (typeof item.id === 'string' && item.id.startsWith('hero-sample')) ||
@@ -5054,11 +5095,11 @@
           difficulty: '中級',
           assist1: true,
           assist2: true,
-          timeLimit: 'なし'
+          timeLimit: 'なし',
+          timestamp: Date.now() - 86400000 * 17
         });
       }
 
-      // Persist the full clean list (no truncation)
       try {
         localStorage.setItem(HEROES_STORAGE_KEY, JSON.stringify(heroes));
       } catch (e) {}
@@ -5066,10 +5107,71 @@
       return heroes;
     }
 
-    // 全ての勇者データを取得するグローバル関数（将来の別画面や集計機能で活用可能）
+    // 全ての勇者データを取得するグローバル関数
     window.getAllHeroRecords = function() {
       return getHeroesList();
     };
+
+    async function syncHeroToServer(heroRecord) {
+      try {
+        await fetch('/api/heroes/record', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(heroRecord)
+        });
+      } catch (e) {
+        console.debug('Failed to sync hero record to server:', e);
+      }
+    }
+
+    async function fetchSharedHeroesFromServer() {
+      if (isFetchingHeroes) return;
+      isFetchingHeroes = true;
+      try {
+        const res = await fetch('/api/heroes/list');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.heroes) && data.heroes.length > 0) {
+            const serverHeroes = data.heroes;
+            const localHeroes = getHeroesList();
+
+            const map = new Map();
+            // Register server heroes
+            serverHeroes.forEach(h => {
+              const key = h.id || `${h.nickname}_${h.dateStr}_${h.moves}`;
+              map.set(key, h);
+            });
+            // Register local heroes not yet on server and upload them
+            localHeroes.forEach(h => {
+              const key = h.id || `${h.nickname}_${h.dateStr}_${h.moves}`;
+              if (!map.has(key)) {
+                map.set(key, h);
+                syncHeroToServer(h);
+              }
+            });
+
+            const merged = Array.from(map.values());
+            merged.sort((a, b) => {
+              const tA = a.timestamp || (a.dateStr ? new Date(a.dateStr).getTime() : 0) || 0;
+              const tB = b.timestamp || (b.dateStr ? new Date(b.dateStr).getTime() : 0) || 0;
+              return tB - tA;
+            });
+
+            localStorage.setItem(HEROES_STORAGE_KEY, JSON.stringify(merged));
+
+            // If heroes modal is currently active, re-render immediately
+            const modal = document.getElementById('heroesModal');
+            if (modal && modal.classList.contains('active')) {
+              renderHeroesTable(merged);
+            }
+          }
+        }
+      } catch (e) {
+        console.debug('Heroes sync notice:', e);
+      } finally {
+        isFetchingHeroes = false;
+      }
+    }
 
     function saveHeroVictory() {
       const heroes = getHeroesList();
@@ -5084,7 +5186,7 @@
       else if (difficulty === 'custom') diffName = `任意(${customDepth}手)`;
 
       const newRecord = {
-        id: `hero-${Date.now()}`,
+        id: `hero-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
         nickname: getPlayerDisplayName(),
         moves: history.length,
         dateStr: dateStr,
@@ -5092,10 +5194,11 @@
         difficulty: diffName,
         assist1: coachingMode1,
         assist2: coachingMode2,
-        timeLimit: humanTimeLimitSec > 0 ? `${humanTimeLimitSec}秒` : 'なし'
+        timeLimit: humanTimeLimitSec > 0 ? `${humanTimeLimitSec}秒` : 'なし',
+        timestamp: Date.now()
       };
 
-      // 先頭に追加し、全件を漏れなく永続ストレージに保存
+      // 先頭に追加し、端末ローカルキャッシュに保存
       heroes.unshift(newRecord);
 
       try {
@@ -5103,6 +5206,11 @@
       } catch (e) {
         console.warn('LocalStorage save error:', e);
       }
+
+      // サーバーへ送信（全端末・友人とリアルタイム共有）
+      syncHeroToServer(newRecord).then(() => {
+        fetchSharedHeroesFromServer();
+      });
 
       // 「上級」または「マスター」で人間が勝利した場合、AI学習用完全棋譜（全着手履歴）を記録
       if (difficulty === 'hard' || difficulty === 'master' || difficulty === 'custom') {
@@ -6448,17 +6556,15 @@
       }
     }
 
-    function openHeroesModal() {
-      const modal = document.getElementById('heroesModal');
+    function renderHeroesTable(allHeroes) {
       const tbody = document.getElementById('heroesTableBody');
       const subInfo = document.getElementById('heroesModalSubInfo');
-      if (!modal || !tbody) return;
+      if (!tbody) return;
 
-      const allHeroes = getHeroesList();
       const displayHeroes = allHeroes.slice(0, 30); // 画面表示は直近30名
 
       if (subInfo) {
-        subInfo.textContent = `見事AIを打ち破った直近30名を表示（全 ${allHeroes.length} 件の勇者記録を完全保存中）`;
+        subInfo.textContent = `見事AIを打ち破った直近30名を表示（全 ${allHeroes.length} 件の勇者記録をクラウド共有中）`;
       }
 
       tbody.innerHTML = '';
@@ -6493,8 +6599,18 @@
           tbody.appendChild(tr);
         });
       }
+    }
 
+    function openHeroesModal() {
+      const modal = document.getElementById('heroesModal');
+      if (!modal) return;
+
+      const allHeroes = getHeroesList();
+      renderHeroesTable(allHeroes);
       modal.classList.add('active');
+
+      // サーバーの最新勇者データを非同期照会して同期
+      fetchSharedHeroesFromServer();
     }
 
     function closeHeroesModal() {
@@ -7007,13 +7123,20 @@
       }
     }
 
-    function resetGame() {
+    function resetGame(silent = false) {
       stopTurnTimer();
       stopParticleFx();
       fallingBalls = [];
       isAnimatingMove = false;
-      const resModal = document.getElementById('gameResultModal');
-      if (resModal) resModal.classList.remove('active');
+
+      // Close all modals
+      const modals = document.querySelectorAll('.modal-overlay');
+      modals.forEach(m => {
+        m.classList.remove('active', 'show');
+        m.style.display = 'none';
+        m.style.opacity = '0';
+        m.style.pointerEvents = 'none';
+      });
 
       board.fill(0);
       heights.fill(0);
@@ -7040,6 +7163,11 @@
 
       updateCoachingAndEvalGauge();
       renderUI();
+
+      if (!silent) {
+        playSoundEffect('tap');
+        showFloatingToast(`🔄 盤面をリセットしました（${name} ${humanPlayer === 1 ? '先手' : '後手'} / 50% 互角）`);
+      }
 
       if (currentTurn === aiPlayer) {
         makeAiMove();
@@ -8411,9 +8539,10 @@
     checkDailyAutoLearningSchedule();
     syncGlobalAiModelFromServer(false);
 
-    resetGame();
+    resetGame(true);
     switchMobileTab(currentMobileTab);
     initMatchCounter();
+    fetchSharedHeroesFromServer();
     showCanvasHintTemporary(3500);
   </script>
 </body>
