@@ -2317,9 +2317,44 @@
       white-space: nowrap;
       display: none;
     }
+
+    /* ==========================================
+       Floating Toast Notification
+       ========================================== */
+    .floating-toast {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(15, 23, 42, 0.95);
+      color: #f8fafc;
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      padding: 10px 22px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 0 18px rgba(56, 189, 248, 0.25);
+      z-index: 100000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      max-width: 90vw;
+    }
+    .floating-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
   </style>
 </head>
 <body>
+  <!-- Global Floating Toast Notification -->
+  <div id="floatingToast" class="floating-toast"></div>
 
   <header>
     <div class="brand">
@@ -3834,6 +3869,34 @@
         btn.classList.add('muted');
         icon.textContent = '🔈';
         label.textContent = '効果音 OFF';
+      }
+    }
+
+    // ==========================================
+    // 🔔 フローティングトースト通知システム
+    // ==========================================
+    let toastHideTimer = null;
+    function showFloatingToast(message, durationMs = 2600) {
+      try {
+        let toast = document.getElementById('floatingToast');
+        if (!toast) {
+          toast = document.createElement('div');
+          toast.id = 'floatingToast';
+          toast.className = 'floating-toast';
+          document.body.appendChild(toast);
+        }
+        toast.textContent = message;
+        toast.classList.add('show');
+
+        if (toastHideTimer) {
+          clearTimeout(toastHideTimer);
+        }
+        toastHideTimer = setTimeout(() => {
+          if (toast) toast.classList.remove('show');
+          toastHideTimer = null;
+        }, durationMs);
+      } catch (e) {
+        console.warn('Toast notification warning:', e);
       }
     }
 
@@ -7766,7 +7829,11 @@
 
       if (!silent) {
         playSoundEffect('tap');
-        showFloatingToast(`🔄 盤面をリセットしました（${name} ${humanPlayer === 1 ? '先手' : '後手'} / 50% 互角）`);
+        try {
+          showFloatingToast(`🔄 盤面をリセットしました（${name} ${humanPlayer === 1 ? '先手' : '後手'} / 50% 互角）`);
+        } catch (e) {
+          console.warn('Toast display warning:', e);
+        }
       }
 
       if (currentTurn === aiPlayer) {
@@ -8039,6 +8106,11 @@
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
       document.body.scrollTop = 0;
       document.documentElement.scrollTop = 0;
+
+      // 人間後手かつ初手が未着手でAIが思考待機中の場合、確実にAI初手をトリガー
+      if (!isGameOver && currentTurn === aiPlayer && history.length === 0 && !isAiThinking && !isAnimatingMove && fallingBalls.length === 0) {
+        makeAiMove();
+      }
     }
 
     function goToSettingsScreen() {
